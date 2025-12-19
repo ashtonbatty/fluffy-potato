@@ -1,0 +1,28 @@
+---
+# Service configuration
+service_name: "myservice"
+service_script: "/scripts/{{ service_name }}.sh"
+
+# Process identification for kill operation
+process_identifier: "COMPONENT={{ service_name }}"
+
+# String validation for commands
+start_check_string: "starting"
+stop_check_string: "stopping"
+running_check_string: "running"
+stopped_check_string: "stopped"
+
+# Timing configuration
+wait_seconds: 10
+post_kill_wait_seconds: 3
+
+# Return code configuration (for scripts with non-standard RC behavior)
+start_check_rc: true
+start_expect_zero_rc: true
+stop_check_rc: true
+stop_expect_zero_rc: true
+status_check_rc: true
+status_expect_zero_rc: true
+
+# Service operation to perform (start, stop, status)
+service_action: "status"

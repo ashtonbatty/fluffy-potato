@@ -1,0 +1,5 @@
+---
+service_name: "bar"
+service_script: "/scripts/bar.sh"
+process_identifier: "COMPONENT=bar"
+inventory_group: "bar_servers"

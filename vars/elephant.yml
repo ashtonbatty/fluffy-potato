@@ -1,0 +1,5 @@
+---
+service_name: "elephant"
+service_script: "/scripts/elephant.sh"
+process_identifier: "COMPONENT=elephant"
+inventory_group: "elephant_servers"

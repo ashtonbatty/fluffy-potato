@@ -1,0 +1,13 @@
+[foo_servers]
+localhost
+
+[bar_servers]
+localhost
+
+[elephant_servers]
+localhost
+
+[all_services:children]
+foo_servers
+bar_servers
+elephant_servers

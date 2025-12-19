@@ -1,0 +1,32 @@
+---
+# Unified service orchestration playbook
+# Usage:
+#   ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=start
+#   ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=stop
+#   ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=status
+#
+# Services are processed in order: foo -> bar -> elephant
+
+- name: "{{ service_action | capitalize }} foo service"
+  hosts: foo_servers
+  gather_facts: false
+  vars_files:
+    - vars/foo.yml
+  roles:
+    - service_manager
+
+- name: "{{ service_action | capitalize }} bar service"
+  hosts: bar_servers
+  gather_facts: false
+  vars_files:
+    - vars/bar.yml
+  roles:
+    - service_manager
+
+- name: "{{ service_action | capitalize }} elephant service"
+  hosts: elephant_servers
+  gather_facts: false
+  vars_files:
+    - vars/elephant.yml
+  roles:
+    - service_manager

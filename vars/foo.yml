@@ -1,0 +1,5 @@
+---
+service_name: "foo"
+service_script: "/scripts/foo.sh"
+process_identifier: "COMPONENT=foo"
+inventory_group: "foo_servers"

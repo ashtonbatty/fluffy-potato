@@ -1,0 +1,30 @@
+---
+galaxy_info:
+  role_name: service_manager
+  author: ansible-cal
+  description: >-
+    Generic service manager with graceful shutdown and automatic fallback
+    to force-kill. Supports configurable return code handling, output
+    validation, idempotency, and retry logic.
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+    - name: Fedora
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+  galaxy_tags:
+    - service
+    - management
+    - lifecycle
+    - process
+    - systemd
+
+dependencies: []

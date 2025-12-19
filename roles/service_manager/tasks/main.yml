@@ -1,0 +1,9 @@
+---
+- name: "Validate {{ service_script }} exists and is executable"
+  ansible.builtin.stat:
+    path: "{{ service_script }}"
+  register: script_stat
+  failed_when: not script_stat.stat.exists or not script_stat.stat.executable
+
+- name: "Execute {{ service_action }} action for {{ service_name }}"
+  ansible.builtin.include_tasks: "{{ service_action }}.yml"
