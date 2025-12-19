@@ -42,6 +42,22 @@
         msg: "{{ cal_role_service_name }} stopped successfully"
 
   rescue:
+    - name: "Validate force kill is allowed for {{ cal_role_service_name }}"
+      ansible.builtin.assert:
+        that:
+          - cal_role_allow_force_kill | bool
+        fail_msg: "Service {{ cal_role_service_name }} failed to stop gracefully, but force kill is disabled (cal_role_allow_force_kill=false)"
+        success_msg: "Force kill is allowed, proceeding with pkill"
+
+    - name: "Validate process identifier is safe for {{ cal_role_service_name }}"
+      ansible.builtin.assert:
+        that:
+          - cal_role_process_identifier is defined
+          - cal_role_process_identifier | length > 0
+          - cal_role_process_identifier | length >= 5
+        fail_msg: "cal_role_process_identifier is too short or empty (must be >= 5 chars): '{{ cal_role_process_identifier | default('') }}'"
+        success_msg: "Process identifier is sufficiently specific: {{ cal_role_process_identifier }}"
+
     - name: "Service did not stop gracefully, killing process for {{ cal_role_service_name }}"
       ansible.builtin.debug:
         msg: "{{ cal_role_service_name }} failed to stop gracefully, attempting to kill process with identifier: {{ cal_role_process_identifier }}"
@@ -62,7 +78,7 @@
       register: cal_role_final_status
       until: cal_role_stopped_check_string in cal_role_final_status.stdout
       retries: 2
-      delay: 3
+      delay: "{{ cal_role_retry_delay }}"
       changed_when: false
       failed_when: >
         (cal_role_stopped_check_string not in cal_role_final_status.stdout) or

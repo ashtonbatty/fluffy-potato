@@ -1,4 +1,12 @@
 ---
+- name: "Validate service action is allowed - {{ cal_role_service_action }}"
+  ansible.builtin.assert:
+    that:
+      - cal_role_service_action is defined
+      - cal_role_service_action in ['start', 'stop', 'status']
+    fail_msg: "cal_role_service_action must be one of: start, stop, status. Got: {{ cal_role_service_action | default('undefined') }}"
+    success_msg: "Service action {{ cal_role_service_action }} is valid"
+
 - name: "Validate service script exists and is executable - {{ cal_role_service_script }}"
   ansible.builtin.stat:
     path: "{{ cal_role_service_script }}"

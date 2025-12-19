@@ -17,8 +17,10 @@ cal_role_stop_check_string: "stopping"
 cal_role_running_check_string: "running"
 cal_role_stopped_check_string: "stopped"
 
+# Force kill configuration
+cal_role_allow_force_kill: true
+
 # Timing configuration
-cal_role_wait_seconds: 10
 cal_role_post_kill_wait_seconds: 3
 cal_role_retry_delay: 3
 
