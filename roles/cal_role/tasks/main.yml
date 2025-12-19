@@ -1,0 +1,17 @@
+---
+- name: "Validate service script exists and is executable - {{ cal_role_service_script }}"
+  ansible.builtin.stat:
+    path: "{{ cal_role_service_script }}"
+  register: cal_role_script_stat
+  become: "{{ cal_role_service_become }}"
+  become_user: "{{ cal_role_service_become_user }}"
+  become_flags: "{{ cal_role_service_become_flags }}"
+  failed_when: not cal_role_script_stat.stat.exists or not cal_role_script_stat.stat.executable
+
+- name: "Execute service action - {{ cal_role_service_action }}"
+  become: "{{ cal_role_service_become }}"
+  become_user: "{{ cal_role_service_become_user }}"
+  become_flags: "{{ cal_role_service_become_flags }}"
+  block:
+    - name: "Include action tasks - {{ cal_role_service_action }}"
+      ansible.builtin.include_tasks: "{{ cal_role_service_action }}.yml"

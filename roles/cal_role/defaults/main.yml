@@ -1,0 +1,34 @@
+---
+# Service configuration
+cal_role_service_name: "myservice"
+cal_role_service_script: "/scripts/{{ cal_role_service_name }}.sh"
+
+# Process identification for kill operation
+cal_role_process_identifier: "COMPONENT={{ cal_role_service_name }}"
+
+# Privilege escalation for service operations
+cal_role_service_become: false
+cal_role_service_become_user: "root"
+cal_role_service_become_flags: ""
+
+# String validation for commands
+cal_role_start_check_string: "starting"
+cal_role_stop_check_string: "stopping"
+cal_role_running_check_string: "running"
+cal_role_stopped_check_string: "stopped"
+
+# Timing configuration
+cal_role_wait_seconds: 10
+cal_role_post_kill_wait_seconds: 3
+cal_role_retry_delay: 3
+
+# Return code configuration (for scripts with non-standard RC behavior)
+cal_role_start_check_rc: true
+cal_role_start_expect_zero_rc: true
+cal_role_stop_check_rc: true
+cal_role_stop_expect_zero_rc: true
+cal_role_status_check_rc: true
+cal_role_status_expect_zero_rc: true
+
+# Service operation to perform (start, stop, status)
+cal_role_service_action: "status"

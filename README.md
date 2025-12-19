@@ -28,7 +28,7 @@ ansible-cal/
 │   ├── bar.yml                        # Bar service configuration
 │   └── elephant.yml                   # Elephant service configuration
 ├── roles/
-│   └── service_manager/
+│   └── cal_role/
 │       ├── defaults/
 │       │   └── main.yml               # Default variables
 │       ├── meta/
@@ -104,7 +104,7 @@ ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=status
 
 ### Role Defaults
 
-All configurable options are in `roles/service_manager/defaults/main.yml`:
+All configurable options are in `roles/cal_role/defaults/main.yml`:
 
 ```yaml
 # Service configuration
@@ -259,7 +259,7 @@ Before any operation, the role validates:
      vars_files:
        - vars/newservice.yml
      roles:
-       - service_manager
+       - cal_role
    ```
 
 4. **Update services registry** (`vars/services.yml`) for documentation:
@@ -319,7 +319,7 @@ Use the role directly for single service operations:
   vars:
     service_action: "stop"
   roles:
-    - service_manager
+    - cal_role
 ```
 
 ### Custom Validation Strings

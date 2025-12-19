@@ -1,5 +1,5 @@
 ---
-service_name: "bar"
-service_script: "/scripts/bar.sh"
-process_identifier: "COMPONENT=bar"
+cal_role_service_name: "bar"
+cal_role_service_script: "/scripts/bar.sh"
+cal_role_process_identifier: "COMPONENT=bar"
 inventory_group: "bar_servers"

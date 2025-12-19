@@ -1,0 +1,75 @@
+---
+# Idempotency pre-check
+- name: "Check if service is already stopped for {{ cal_role_service_name }}"
+  ansible.builtin.command: "{{ cal_role_service_script }} status"
+  register: cal_role_pre_stop_check
+  failed_when: false
+  changed_when: false
+
+- name: "Service already stopped, skipping stop for {{ cal_role_service_name }}"
+  ansible.builtin.debug:
+    msg: "{{ cal_role_service_name }} is already stopped, skipping"
+  when: cal_role_stopped_check_string in cal_role_pre_stop_check.stdout
+
+- name: "Stop service with block-rescue pattern for {{ cal_role_service_name }}"
+  when: cal_role_stopped_check_string not in cal_role_pre_stop_check.stdout
+  block:
+    - name: "Stop service for {{ cal_role_service_name }}"
+      ansible.builtin.command: "{{ cal_role_service_script }} stop"
+      register: cal_role_stop_result
+      changed_when: cal_role_stop_result.rc == 0
+      failed_when: >
+        (cal_role_stop_check_string not in cal_role_stop_result.stdout) or
+        (cal_role_stop_check_rc and
+          ((cal_role_stop_expect_zero_rc and cal_role_stop_result.rc != 0) or
+           (not cal_role_stop_expect_zero_rc and cal_role_stop_result.rc == 0)))
+
+    - name: "Verify service has stopped for {{ cal_role_service_name }}"
+      ansible.builtin.command: "{{ cal_role_service_script }} status"
+      register: cal_role_status_result
+      until: cal_role_stopped_check_string in cal_role_status_result.stdout
+      retries: 3
+      delay: "{{ cal_role_retry_delay }}"
+      changed_when: false
+      failed_when: >
+        (cal_role_stopped_check_string not in cal_role_status_result.stdout) or
+        (cal_role_status_check_rc and
+          ((cal_role_status_expect_zero_rc and cal_role_status_result.rc != 0) or
+           (not cal_role_status_expect_zero_rc and cal_role_status_result.rc == 0)))
+
+    - name: "Service stopped successfully for {{ cal_role_service_name }}"
+      ansible.builtin.debug:
+        msg: "{{ cal_role_service_name }} stopped successfully"
+
+  rescue:
+    - name: "Service did not stop gracefully, killing process for {{ cal_role_service_name }}"
+      ansible.builtin.debug:
+        msg: "{{ cal_role_service_name }} failed to stop gracefully, attempting to kill process with identifier: {{ cal_role_process_identifier }}"
+
+    - name: "Kill process by identifier for {{ cal_role_service_name }}"
+      ansible.builtin.command:
+        cmd: "pkill -9 -f -- {{ cal_role_process_identifier | quote }}"
+      register: cal_role_kill_result
+      changed_when: cal_role_kill_result.rc == 0
+      failed_when: cal_role_kill_result.rc not in [0, 1]
+
+    - name: "Wait after kill seconds - {{ cal_role_post_kill_wait_seconds }}"
+      ansible.builtin.pause:
+        seconds: "{{ cal_role_post_kill_wait_seconds }}"
+
+    - name: "Verify process is dead for {{ cal_role_service_name }}"
+      ansible.builtin.command: "{{ cal_role_service_script }} status"
+      register: cal_role_final_status
+      until: cal_role_stopped_check_string in cal_role_final_status.stdout
+      retries: 2
+      delay: 3
+      changed_when: false
+      failed_when: >
+        (cal_role_stopped_check_string not in cal_role_final_status.stdout) or
+        (cal_role_status_check_rc and
+          ((cal_role_status_expect_zero_rc and cal_role_final_status.rc != 0) or
+           (not cal_role_status_expect_zero_rc and cal_role_final_status.rc == 0)))
+
+    - name: "Process killed successfully for {{ cal_role_service_name }}"
+      ansible.builtin.debug:
+        msg: "{{ cal_role_service_name }} process killed successfully, service is now stopped"

@@ -1,5 +1,5 @@
 ---
-service_name: "elephant"
-service_script: "/scripts/elephant.sh"
-process_identifier: "COMPONENT=elephant"
+cal_role_service_name: "elephant"
+cal_role_service_script: "/scripts/elephant.sh"
+cal_role_process_identifier: "COMPONENT=elephant"
 inventory_group: "elephant_servers"

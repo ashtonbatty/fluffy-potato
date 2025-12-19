@@ -26,21 +26,23 @@
     - name: Stop service with block-rescue pattern
       block:
         - name: Stop the service
-          ansible.builtin.shell: "{{ service_script }} stop"
+          ansible.builtin.command: "{{ service_script }} stop"
           register: stop_result
+          changed_when: stop_result.rc == 0
           failed_when: >
             (stop_check_string not in stop_result.stdout) or
             (stop_check_rc and
               ((stop_expect_zero_rc and stop_result.rc != 0) or
                (not stop_expect_zero_rc and stop_result.rc == 0)))
 
-        - name: "Wait {{ wait_seconds }} seconds for service to stop"
+        - name: "Wait for service to stop seconds - {{ wait_seconds }}"
           ansible.builtin.pause:
             seconds: "{{ wait_seconds }}"
 
         - name: Verify service has stopped
-          ansible.builtin.shell: "{{ service_script }} status"
+          ansible.builtin.command: "{{ service_script }} status"
           register: status_result
+          changed_when: false
           failed_when: >
             (stopped_check_string not in status_result.stdout) or
             (status_check_rc and
@@ -57,18 +59,20 @@
             msg: "Service failed to stop gracefully, attempting to kill process with identifier: {{ process_identifier }}"
 
         - name: Kill process by identifier
-          ansible.builtin.shell: |
-            pkill -9 -f "{{ process_identifier }}"
+          ansible.builtin.command:
+            cmd: "pkill -9 -f -- {{ process_identifier | quote }}"
           register: kill_result
-          ignore_errors: true
+          changed_when: kill_result.rc == 0
+          failed_when: kill_result.rc not in [0, 1]
 
-        - name: "Wait {{ post_kill_wait_seconds }} seconds after kill"
+        - name: "Wait after kill seconds - {{ post_kill_wait_seconds }}"
           ansible.builtin.pause:
             seconds: "{{ post_kill_wait_seconds }}"
 
         - name: Verify process is dead
-          ansible.builtin.shell: "{{ service_script }} status"
+          ansible.builtin.command: "{{ service_script }} status"
           register: final_status
+          changed_when: false
           failed_when: >
             (stopped_check_string not in final_status.stdout) or
             (status_check_rc and

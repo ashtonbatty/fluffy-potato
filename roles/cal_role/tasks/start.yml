@@ -1,0 +1,42 @@
+---
+# Idempotency pre-check
+- name: "Check if service is already running for {{ cal_role_service_name }}"
+  ansible.builtin.command: "{{ cal_role_service_script }} status"
+  register: cal_role_pre_start_check
+  failed_when: false
+  changed_when: false
+
+- name: "Service already running, skipping start for {{ cal_role_service_name }}"
+  ansible.builtin.debug:
+    msg: "{{ cal_role_service_name }} is already running, skipping"
+  when: cal_role_running_check_string in cal_role_pre_start_check.stdout
+
+- name: "Start service for {{ cal_role_service_name }}"
+  ansible.builtin.command: "{{ cal_role_service_script }} start"
+  register: cal_role_start_result
+  when: cal_role_running_check_string not in cal_role_pre_start_check.stdout
+  changed_when: cal_role_start_result.rc == 0
+  failed_when: >
+    (cal_role_start_check_string not in cal_role_start_result.stdout) or
+    (cal_role_start_check_rc and
+      ((cal_role_start_expect_zero_rc and cal_role_start_result.rc != 0) or
+       (not cal_role_start_expect_zero_rc and cal_role_start_result.rc == 0)))
+
+- name: "Verify service is running for {{ cal_role_service_name }}"
+  ansible.builtin.command: "{{ cal_role_service_script }} status"
+  register: cal_role_status_result
+  when: cal_role_running_check_string not in cal_role_pre_start_check.stdout
+  until: cal_role_running_check_string in cal_role_status_result.stdout
+  retries: 3
+  delay: "{{ cal_role_retry_delay }}"
+  changed_when: false
+  failed_when: >
+    (cal_role_running_check_string not in cal_role_status_result.stdout) or
+    (cal_role_status_check_rc and
+      ((cal_role_status_expect_zero_rc and cal_role_status_result.rc != 0) or
+       (not cal_role_status_expect_zero_rc and cal_role_status_result.rc == 0)))
+
+- name: "Service started successfully for {{ cal_role_service_name }}"
+  ansible.builtin.debug:
+    msg: "{{ cal_role_service_name }} started successfully and is running"
+  when: cal_role_running_check_string not in cal_role_pre_start_check.stdout

@@ -24,9 +24,9 @@ ansible-playbook --syntax-check orchestrate.yml
 
 ## Architecture
 
-### service_manager Role
+### cal_role Role
 
-Central role in `roles/service_manager/` that handles all service operations:
+Central role in `roles/cal_role/` that handles all service operations:
 - `tasks/main.yml` - Script validation + routes to action-specific task file
 - `tasks/start.yml` - Idempotent start with retry logic for status verification
 - `tasks/stop.yml` - Block-rescue pattern: idempotent graceful stop with retries, fallback to `pkill -9`
