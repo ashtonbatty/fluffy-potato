@@ -4,9 +4,6 @@
   ansible.builtin.shell: "{{ service_script }} status"
   register: pre_stop_check
   failed_when: false
-  become: "{{ service_become }}"
-  become_user: "{{ service_become_user }}"
-  become_flags: "{{ service_become_flags }}"
 
 - name: "Skip stop - {{ service_name }} already stopped"
   ansible.builtin.debug:
@@ -19,9 +16,6 @@
     - name: "Stop {{ service_name }} service"
       ansible.builtin.shell: "{{ service_script }} stop"
       register: stop_result
-      become: "{{ service_become }}"
-      become_user: "{{ service_become_user }}"
-      become_flags: "{{ service_become_flags }}"
       failed_when: >
         (stop_check_string not in stop_result.stdout) or
         (stop_check_rc and
@@ -31,12 +25,9 @@
     - name: "Verify {{ service_name }} has stopped"
       ansible.builtin.shell: "{{ service_script }} status"
       register: status_result
-      become: "{{ service_become }}"
-      become_user: "{{ service_become_user }}"
-      become_flags: "{{ service_become_flags }}"
       until: stopped_check_string in status_result.stdout
       retries: 3
-      delay: "{{ (wait_seconds | int / 3) | int | default(3, true) }}"
+      delay: "{{ retry_delay }}"
       failed_when: >
         (stopped_check_string not in status_result.stdout) or
         (status_check_rc and
@@ -56,9 +47,6 @@
       ansible.builtin.shell: |
         pkill -9 -f -- {{ process_identifier | quote }}
       register: kill_result
-      become: "{{ service_become }}"
-      become_user: "{{ service_become_user }}"
-      become_flags: "{{ service_become_flags }}"
       failed_when: kill_result.rc not in [0, 1]
 
     - name: "Wait {{ post_kill_wait_seconds }} seconds after kill"
@@ -68,9 +56,6 @@
     - name: "Verify {{ service_name }} process is dead"
       ansible.builtin.shell: "{{ service_script }} status"
       register: final_status
-      become: "{{ service_become }}"
-      become_user: "{{ service_become_user }}"
-      become_flags: "{{ service_become_flags }}"
       until: stopped_check_string in final_status.stdout
       retries: 2
       delay: 3

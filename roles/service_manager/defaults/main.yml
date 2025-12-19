@@ -20,6 +20,7 @@ stopped_check_string: "stopped"
 # Timing configuration
 wait_seconds: 10
 post_kill_wait_seconds: 3
+retry_delay: 3
 
 # Return code configuration (for scripts with non-standard RC behavior)
 start_check_rc: true

@@ -3,9 +3,6 @@
   ansible.builtin.shell: "{{ service_script }} status"
   register: status_result
   failed_when: false
-  become: "{{ service_become }}"
-  become_user: "{{ service_become_user }}"
-  become_flags: "{{ service_become_flags }}"
 
 - name: "Display {{ service_name }} status"
   ansible.builtin.debug:

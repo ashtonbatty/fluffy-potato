@@ -9,4 +9,8 @@
   failed_when: not script_stat.stat.exists or not script_stat.stat.executable
 
 - name: "Execute {{ service_action }} action for {{ service_name }}"
-  ansible.builtin.include_tasks: "{{ service_action }}.yml"
+  block:
+    - ansible.builtin.include_tasks: "{{ service_action }}.yml"
+  become: "{{ service_become }}"
+  become_user: "{{ service_become_user }}"
+  become_flags: "{{ service_become_flags }}"
