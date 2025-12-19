@@ -4,6 +4,9 @@
   ansible.builtin.shell: "{{ service_script }} status"
   register: pre_start_check
   failed_when: false
+  become: "{{ service_become }}"
+  become_user: "{{ service_become_user }}"
+  become_flags: "{{ service_become_flags }}"
 
 - name: "Skip start - {{ service_name }} already running"
   ansible.builtin.debug:
@@ -14,6 +17,9 @@
   ansible.builtin.shell: "{{ service_script }} start"
   register: start_result
   when: running_check_string not in pre_start_check.stdout
+  become: "{{ service_become }}"
+  become_user: "{{ service_become_user }}"
+  become_flags: "{{ service_become_flags }}"
   failed_when: >
     (start_check_string not in start_result.stdout) or
     (start_check_rc and
@@ -24,6 +30,9 @@
   ansible.builtin.shell: "{{ service_script }} status"
   register: status_result
   when: running_check_string not in pre_start_check.stdout
+  become: "{{ service_become }}"
+  become_user: "{{ service_become_user }}"
+  become_flags: "{{ service_become_flags }}"
   until: running_check_string in status_result.stdout
   retries: 3
   delay: "{{ (wait_seconds | int / 3) | int | default(3, true) }}"

@@ -6,6 +6,11 @@ service_script: "/scripts/{{ service_name }}.sh"
 # Process identification for kill operation
 process_identifier: "COMPONENT={{ service_name }}"
 
+# Privilege escalation for service operations
+service_become: false
+service_become_user: "root"
+service_become_flags: ""
+
 # String validation for commands
 start_check_string: "starting"
 stop_check_string: "stopping"

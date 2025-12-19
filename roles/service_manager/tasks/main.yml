@@ -3,6 +3,9 @@
   ansible.builtin.stat:
     path: "{{ service_script }}"
   register: script_stat
+  become: "{{ service_become }}"
+  become_user: "{{ service_become_user }}"
+  become_flags: "{{ service_become_flags }}"
   failed_when: not script_stat.stat.exists or not script_stat.stat.executable
 
 - name: "Execute {{ service_action }} action for {{ service_name }}"
