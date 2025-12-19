@@ -1,39 +1,42 @@
 ---
 # Idempotency pre-check
-- name: "Check if {{ service_name }} is already running"
-  ansible.builtin.shell: "{{ service_script }} status"
+- name: "Check if service is already running - {{ service_name }}"
+  ansible.builtin.command: "{{ service_script }} status"
   register: pre_start_check
   failed_when: false
+  changed_when: false
 
-- name: "Skip start - {{ service_name }} already running"
+- name: "Skip start, service already running - {{ service_name }}"
   ansible.builtin.debug:
     msg: "{{ service_name }} is already running, skipping"
   when: running_check_string in pre_start_check.stdout
 
-- name: "Start {{ service_name }} service"
-  ansible.builtin.shell: "{{ service_script }} start"
+- name: "Start service - {{ service_name }}"
+  ansible.builtin.command: "{{ service_script }} start"
   register: start_result
   when: running_check_string not in pre_start_check.stdout
+  changed_when: start_result.rc == 0
   failed_when: >
     (start_check_string not in start_result.stdout) or
     (start_check_rc and
       ((start_expect_zero_rc and start_result.rc != 0) or
        (not start_expect_zero_rc and start_result.rc == 0)))
 
-- name: "Verify {{ service_name }} is running"
-  ansible.builtin.shell: "{{ service_script }} status"
+- name: "Verify service is running - {{ service_name }}"
+  ansible.builtin.command: "{{ service_script }} status"
   register: status_result
   when: running_check_string not in pre_start_check.stdout
   until: running_check_string in status_result.stdout
   retries: 3
   delay: "{{ retry_delay }}"
+  changed_when: false
   failed_when: >
     (running_check_string not in status_result.stdout) or
     (status_check_rc and
       ((status_expect_zero_rc and status_result.rc != 0) or
        (not status_expect_zero_rc and status_result.rc == 0)))
 
-- name: "{{ service_name }} started successfully"
+- name: "Service started successfully - {{ service_name }}"
   ansible.builtin.debug:
     msg: "{{ service_name }} started successfully and is running"
   when: running_check_string not in pre_start_check.stdout

@@ -1,70 +1,75 @@
 ---
 # Idempotency pre-check
-- name: "Check if {{ service_name }} is already stopped"
-  ansible.builtin.shell: "{{ service_script }} status"
+- name: "Check if service is already stopped - {{ service_name }}"
+  ansible.builtin.command: "{{ service_script }} status"
   register: pre_stop_check
   failed_when: false
+  changed_when: false
 
-- name: "Skip stop - {{ service_name }} already stopped"
+- name: "Skip stop, service already stopped - {{ service_name }}"
   ansible.builtin.debug:
     msg: "{{ service_name }} is already stopped, skipping"
   when: stopped_check_string in pre_stop_check.stdout
 
-- name: "Stop {{ service_name }} service with block-rescue pattern"
+- name: "Stop service with block-rescue pattern - {{ service_name }}"
   when: stopped_check_string not in pre_stop_check.stdout
   block:
-    - name: "Stop {{ service_name }} service"
-      ansible.builtin.shell: "{{ service_script }} stop"
+    - name: "Stop service - {{ service_name }}"
+      ansible.builtin.command: "{{ service_script }} stop"
       register: stop_result
+      changed_when: stop_result.rc == 0
       failed_when: >
         (stop_check_string not in stop_result.stdout) or
         (stop_check_rc and
           ((stop_expect_zero_rc and stop_result.rc != 0) or
            (not stop_expect_zero_rc and stop_result.rc == 0)))
 
-    - name: "Verify {{ service_name }} has stopped"
-      ansible.builtin.shell: "{{ service_script }} status"
+    - name: "Verify service has stopped - {{ service_name }}"
+      ansible.builtin.command: "{{ service_script }} status"
       register: status_result
       until: stopped_check_string in status_result.stdout
       retries: 3
       delay: "{{ retry_delay }}"
+      changed_when: false
       failed_when: >
         (stopped_check_string not in status_result.stdout) or
         (status_check_rc and
           ((status_expect_zero_rc and status_result.rc != 0) or
            (not status_expect_zero_rc and status_result.rc == 0)))
 
-    - name: "{{ service_name }} stopped successfully"
+    - name: "Service stopped successfully - {{ service_name }}"
       ansible.builtin.debug:
         msg: "{{ service_name }} stopped successfully"
 
   rescue:
-    - name: "{{ service_name }} did not stop gracefully, killing process"
+    - name: "Service did not stop gracefully, killing process - {{ service_name }}"
       ansible.builtin.debug:
         msg: "{{ service_name }} failed to stop gracefully, attempting to kill process with identifier: {{ process_identifier }}"
 
-    - name: "Kill {{ service_name }} process by identifier"
-      ansible.builtin.shell: |
-        pkill -9 -f -- {{ process_identifier | quote }}
+    - name: "Kill process by identifier - {{ service_name }}"
+      ansible.builtin.command:
+        cmd: "pkill -9 -f -- {{ process_identifier | quote }}"
       register: kill_result
+      changed_when: kill_result.rc == 0
       failed_when: kill_result.rc not in [0, 1]
 
-    - name: "Wait {{ post_kill_wait_seconds }} seconds after kill"
+    - name: "Wait after kill - {{ post_kill_wait_seconds ~ 's' }}"
       ansible.builtin.pause:
         seconds: "{{ post_kill_wait_seconds }}"
 
-    - name: "Verify {{ service_name }} process is dead"
-      ansible.builtin.shell: "{{ service_script }} status"
+    - name: "Verify process is dead - {{ service_name }}"
+      ansible.builtin.command: "{{ service_script }} status"
       register: final_status
       until: stopped_check_string in final_status.stdout
       retries: 2
       delay: 3
+      changed_when: false
       failed_when: >
         (stopped_check_string not in final_status.stdout) or
         (status_check_rc and
           ((status_expect_zero_rc and final_status.rc != 0) or
            (not status_expect_zero_rc and final_status.rc == 0)))
 
-    - name: "{{ service_name }} process killed successfully"
+    - name: "Process killed successfully - {{ service_name }}"
       ansible.builtin.debug:
         msg: "{{ service_name }} process killed successfully, service is now stopped"

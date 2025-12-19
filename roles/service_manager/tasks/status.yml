@@ -1,10 +1,11 @@
 ---
-- name: "Check {{ service_name }} status"
-  ansible.builtin.shell: "{{ service_script }} status"
+- name: "Check service status - {{ service_name }}"
+  ansible.builtin.command: "{{ service_script }} status"
   register: status_result
   failed_when: false
+  changed_when: false
 
-- name: "Display {{ service_name }} status"
+- name: "Display service status - {{ service_name }}"
   ansible.builtin.debug:
     msg:
       - "Service: {{ service_name }}"
