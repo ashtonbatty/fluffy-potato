@@ -29,7 +29,8 @@
     service_item:
       name: foo
   tasks:
-    - ansible.builtin.include_tasks:
+    - name: "Execute service operation with workflow tracking"
+      ansible.builtin.include_tasks:
         file: ../roles/appname/tasks/execute_service_with_tracking.yml
       vars:
         service_action: "status"
@@ -49,7 +50,8 @@
       ansible.builtin.meta: end_play
       when: hostvars['localhost']['workflow_metadata']['workflow_status'] == 'failed'
 
-    - ansible.builtin.include_tasks:
+    - name: "Execute service operation with workflow tracking"
+      ansible.builtin.include_tasks:
         file: ../roles/appname/tasks/execute_service_with_tracking.yml
       vars:
         service_action: "status"
@@ -69,7 +71,8 @@
       ansible.builtin.meta: end_play
       when: hostvars['localhost']['workflow_metadata']['workflow_status'] == 'failed'
 
-    - ansible.builtin.include_tasks:
+    - name: "Execute service operation with workflow tracking"
+      ansible.builtin.include_tasks:
         file: ../roles/appname/tasks/execute_service_with_tracking.yml
       vars:
         service_action: "status"

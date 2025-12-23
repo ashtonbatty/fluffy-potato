@@ -1,0 +1,28 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Verify test script exists
+      ansible.builtin.stat:
+        path: /scripts/testservice.sh
+      register: test_script
+      failed_when: not test_script.stat.exists or not test_script.stat.executable
+
+    - name: Verify systemd service is defined
+      ansible.builtin.systemd:
+        name: systemd-test
+      register: systemd_service
+      failed_when: systemd_service.status.LoadState != "loaded"
+
+    - name: Verify systemd service is stopped
+      ansible.builtin.systemd:
+        name: systemd-test
+      register: systemd_status
+      failed_when: systemd_status.status.ActiveState == "active"
+
+    - name: Display verification results
+      ansible.builtin.debug:
+        msg: "All verification checks passed!"

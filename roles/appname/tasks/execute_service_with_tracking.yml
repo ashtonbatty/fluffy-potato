@@ -15,7 +15,7 @@
   block:
     - name: "Include appname role for {{ service_item.name }}"
       ansible.builtin.include_role:
-        name: cal
+        name: appname
 
     - name: "Record successful task completion for {{ service_item.name }} service"
       ansible.builtin.set_fact:

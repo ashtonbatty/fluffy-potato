@@ -10,7 +10,7 @@
 #   ./rename_role.sh OLD_NAME NEW_NAME
 #
 # Example:
-#   ./rename_role.sh cal myapp
+#   ./rename_role.sh appname myapp
 #
 # What it does:
 #   1. Renames roles/OLD_NAME/ to roles/NEW_NAME/
@@ -43,7 +43,7 @@ print_info() {
 if [ $# -ne 2 ]; then
     print_error "Invalid number of arguments"
     echo "Usage: $0 OLD_NAME NEW_NAME"
-    echo "Example: $0 cal myapp"
+    echo "Example: $0 appname myapp"
     exit 1
 fi
 
