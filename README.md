@@ -154,12 +154,12 @@ cal_stop_kill_retries: 2
 cal_script_timeout: 300
 
 # Return code configuration
-cal_start_check_rc: true
-cal_start_expect_zero_rc: true
-cal_stop_check_rc: true
-cal_stop_expect_zero_rc: true
-cal_status_check_rc: true
-cal_status_expect_zero_rc: true
+cal_start_expected_rc: 0
+
+cal_stop_expected_rc: 0
+
+cal_status_expected_rc: 0
+
 
 # Service operation to perform (start, stop, status)
 cal_service_action: "status"
@@ -176,8 +176,8 @@ cal_process_identifier: "java.*myservice"
 cal_retry_delay: 5
 
 # For scripts with backwards return codes
-cal_stop_expect_zero_rc: false
-cal_status_expect_zero_rc: false
+cal_stop_expected_rc: 1  # Non-zero expected
+cal_status_expected_rc: 1  # Non-zero expected
 ```
 
 ## Advanced Usage
@@ -188,8 +188,8 @@ Some scripts return non-zero for success and zero for failure:
 
 ```bash
 ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=stop \
-  -e "cal_stop_expect_zero_rc=false" \
-  -e "cal_status_expect_zero_rc=false"
+  -e "cal_stop_expected_rc=1" \
+  -e "cal_status_expected_rc=1"
 ```
 
 ### Ignore Return Codes Completely
@@ -198,7 +198,7 @@ Only validate via output strings:
 
 ```bash
 ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=start \
-  -e "cal_start_check_rc=false" \
+  -e "" \
   -e "cal_status_check_rc=false"
 ```
 
@@ -218,7 +218,7 @@ Use extra-vars files for complex overrides:
 ```yaml
 # custom_foo.yml
 cal_retry_delay: 10
-cal_stop_expect_zero_rc: false
+cal_stop_expected_rc: 1  # Non-zero expected
 cal_process_identifier: "java.*custom_pattern"
 cal_allow_force_kill: false
 ```
@@ -325,8 +325,8 @@ Adjust `cal_stop_check_string` in vars file if needed.
 ### Return code validation failing
 
 Your script may have non-standard return codes. Either:
-- Disable RC checking: `cal_stop_check_rc: false`
-- Invert RC logic: `cal_stop_expect_zero_rc: false`
+- Disable RC checking: `# cal_stop_expected_rc not set (skip RC check)`
+- Invert RC logic: `cal_stop_expected_rc: 1  # Non-zero expected`
 
 ### Process kill not working
 
@@ -628,8 +628,8 @@ Different commands may have different RC behaviors:
 ```yaml
 # vars/mixed.yml
 cal_service_name: "mixed"
-cal_stop_expect_zero_rc: false   # stop returns 1 for success
-cal_status_expect_zero_rc: true  # status returns 0 for success
+cal_stop_expected_rc: 1  # Non-zero expected   # stop returns 1 for success
+  # status returns 0 for success
 ```
 
 ## Configuration Variables Reference

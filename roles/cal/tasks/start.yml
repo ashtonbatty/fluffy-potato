@@ -22,9 +22,7 @@
   poll: 1
   failed_when: >
     (cal_start_check_string not in cal_start_result.stdout) or
-    (cal_start_check_rc and
-      ((cal_start_expect_zero_rc and cal_start_result.rc != 0) or
-       (not cal_start_expect_zero_rc and cal_start_result.rc == 0)))
+    (cal_start_expected_rc is defined and cal_start_result.rc != cal_start_expected_rc)
 
 - name: "Verify service is running for {{ cal_service_name }}"
   ansible.builtin.command: "{{ cal_service_script }} status"
@@ -38,9 +36,7 @@
   changed_when: false
   failed_when: >
     (cal_running_check_string not in cal_status_result.stdout) or
-    (cal_status_check_rc and
-      ((cal_status_expect_zero_rc and cal_status_result.rc != 0) or
-       (not cal_status_expect_zero_rc and cal_status_result.rc == 0)))
+    (cal_status_expected_rc is defined and cal_status_result.rc != cal_status_expected_rc)
 
 - name: "Service started successfully for {{ cal_service_name }}"
   ansible.builtin.debug:

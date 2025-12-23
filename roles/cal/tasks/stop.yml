@@ -24,9 +24,7 @@
       poll: 1
       failed_when: >
         (cal_stop_check_string not in cal_stop_result.stdout) or
-        (cal_stop_check_rc and
-          ((cal_stop_expect_zero_rc and cal_stop_result.rc != 0) or
-           (not cal_stop_expect_zero_rc and cal_stop_result.rc == 0)))
+        (cal_stop_expected_rc is defined and cal_stop_result.rc != cal_stop_expected_rc)
 
     - name: "Verify service has stopped for {{ cal_service_name }}"
       ansible.builtin.command: "{{ cal_service_script }} status"
@@ -39,9 +37,7 @@
       changed_when: false
       failed_when: >
         (cal_stopped_check_string not in cal_status_result.stdout) or
-        (cal_status_check_rc and
-          ((cal_status_expect_zero_rc and cal_status_result.rc != 0) or
-           (not cal_status_expect_zero_rc and cal_status_result.rc == 0)))
+        (cal_status_expected_rc is defined and cal_status_result.rc != cal_status_expected_rc)
 
     - name: "Service stopped successfully for {{ cal_service_name }}"
       ansible.builtin.debug:
@@ -98,9 +94,7 @@
       changed_when: false
       failed_when: >
         (cal_stopped_check_string not in cal_final_status.stdout) or
-        (cal_status_check_rc and
-          ((cal_status_expect_zero_rc and cal_final_status.rc != 0) or
-           (not cal_status_expect_zero_rc and cal_final_status.rc == 0)))
+        (cal_status_expected_rc is defined and cal_final_status.rc != cal_status_expected_rc)
 
     - name: "Process killed successfully for {{ cal_service_name }}"
       ansible.builtin.debug:

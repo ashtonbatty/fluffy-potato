@@ -28,13 +28,11 @@ cal_stop_retries: 3
 cal_stop_kill_retries: 2
 cal_script_timeout: 300
 
-# Return code configuration (for scripts with non-standard RC behavior)
-cal_start_check_rc: true
-cal_start_expect_zero_rc: true
-cal_stop_check_rc: true
-cal_stop_expect_zero_rc: true
-cal_status_check_rc: true
-cal_status_expect_zero_rc: true
+# Return code configuration
+# Set to expected return code (usually 0), or omit/set to null to skip RC checking
+cal_start_expected_rc: 0
+cal_stop_expected_rc: 0
+cal_status_expected_rc: 0
 
 # Service operation to perform (start, stop, status)
 cal_service_action: "status"
