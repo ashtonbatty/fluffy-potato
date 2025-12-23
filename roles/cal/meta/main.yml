@@ -1,6 +1,6 @@
 ---
 galaxy_info:
-  role_name: cal_role
+  role_name: cal
   author: ansible-cal
   description: >-
     Generic service manager with graceful shutdown and automatic fallback

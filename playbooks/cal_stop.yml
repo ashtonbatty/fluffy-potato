@@ -27,7 +27,7 @@
   vars_files:
     - ../vars/elephant.yml
   vars:
-    cal_role_service_action: "stop"
+    cal_service_action: "stop"
   tasks:
     - name: "Record task start time for elephant service"
       ansible.builtin.set_fact:
@@ -40,7 +40,7 @@
       block:
         - name: "Include cal_role for elephant"
           ansible.builtin.include_role:
-            name: cal_role
+            name: cal
 
         - name: "Record successful task completion for elephant service"
           ansible.builtin.set_fact:
@@ -86,7 +86,7 @@
   vars_files:
     - ../vars/bar.yml
   vars:
-    cal_role_service_action: "stop"
+    cal_service_action: "stop"
   tasks:
     - name: "Skip if previous task failed"
       ansible.builtin.meta: end_play
@@ -103,7 +103,7 @@
       block:
         - name: "Include cal_role for bar"
           ansible.builtin.include_role:
-            name: cal_role
+            name: cal
 
         - name: "Record successful task completion for bar service"
           ansible.builtin.set_fact:
@@ -162,7 +162,7 @@
       block:
         - name: "Include file monitoring task"
           ansible.builtin.include_role:
-            name: cal_role
+            name: cal
             tasks_from: wait_for_files_deleted
 
         - name: "Record successful task completion for file monitoring"
@@ -209,7 +209,7 @@
   vars_files:
     - ../vars/foo.yml
   vars:
-    cal_role_service_action: "stop"
+    cal_service_action: "stop"
   tasks:
     - name: "Skip if previous task failed"
       ansible.builtin.meta: end_play
@@ -226,7 +226,7 @@
       block:
         - name: "Include cal_role for foo"
           ansible.builtin.include_role:
-            name: cal_role
+            name: cal
 
         - name: "Record successful task completion for foo service"
           ansible.builtin.set_fact:
@@ -280,7 +280,7 @@
 
     - name: "Include workflow reporting task"
       ansible.builtin.include_role:
-        name: cal_role
+        name: cal
         tasks_from: send_workflow_report
 
     - name: "Fail playbook if workflow failed"

@@ -1,0 +1,27 @@
+---
+- name: "Validate service action is allowed - {{ cal_service_action }}"
+  ansible.builtin.assert:
+    that:
+      - cal_service_action is defined
+      - cal_service_action in ['start', 'stop', 'status']
+    fail_msg: "cal_service_action must be one of: start, stop, status. Got: {{ cal_service_action | default('undefined') }}"
+    success_msg: "Service action {{ cal_service_action }} is valid"
+
+- name: "Validate service script exists and is executable - {{ cal_service_script }}"
+  ansible.builtin.stat:
+    path: "{{ cal_service_script }}"
+  register: cal_script_stat
+  become: "{{ cal_service_become }}"
+  become_user: "{{ cal_service_become_user }}"
+  become_flags: "{{ cal_service_become_flags }}"
+  async: "{{ cal_script_timeout }}"
+  poll: 1
+  failed_when: not cal_script_stat.stat.exists or not cal_script_stat.stat.executable
+
+- name: "Execute service action - {{ cal_service_action }}"
+  become: "{{ cal_service_become }}"
+  become_user: "{{ cal_service_become_user }}"
+  become_flags: "{{ cal_service_become_flags }}"
+  block:
+    - name: "Include action tasks - {{ cal_service_action }}"
+      ansible.builtin.include_tasks: "{{ cal_service_action }}.yml"

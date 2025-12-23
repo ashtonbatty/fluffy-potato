@@ -41,7 +41,7 @@ ansible-cal/
 │   ├── bar.yml                        # Bar service configuration
 │   └── elephant.yml                   # Elephant service configuration
 └── roles/
-    └── cal_role/
+    └── cal/
         ├── defaults/
         │   └── main.yml               # Default variables
         ├── meta/
@@ -86,12 +86,12 @@ elephant_servers
 
 ### 2. Configure Services
 
-Each service has a vars file in `vars/` with `cal_role_` prefixed variables. Example `vars/foo.yml`:
+Each service has a vars file in `vars/` with `cal_` prefixed variables. Example `vars/foo.yml`:
 
 ```yaml
-cal_role_service_name: "foo"
-cal_role_service_script: "/scripts/foo.sh"
-cal_role_process_identifier: "COMPONENT=foo"
+cal_service_name: "foo"
+cal_service_script: "/scripts/foo.sh"
+cal_process_identifier: "COMPONENT=foo"
 inventory_group: "foo_servers"
 ```
 
@@ -123,46 +123,46 @@ ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=status
 
 ### Role Defaults
 
-All configurable options are in `roles/cal_role/defaults/main.yml`:
+All configurable options are in `roles/cal/defaults/main.yml`:
 
 ```yaml
 # Service configuration
-cal_role_service_name: "myservice"
-cal_role_service_script: "/scripts/{{ cal_role_service_name }}.sh"
-cal_role_process_identifier: "COMPONENT={{ cal_role_service_name }}"
+cal_service_name: "myservice"
+cal_service_script: "/scripts/{{ cal_service_name }}.sh"
+cal_process_identifier: "COMPONENT={{ cal_service_name }}"
 
 # Privilege escalation for service operations
-cal_role_service_become: false
-cal_role_service_become_user: "root"
-cal_role_service_become_flags: ""
+cal_service_become: false
+cal_service_become_user: "root"
+cal_service_become_flags: ""
 
 # String validation for commands
-cal_role_start_check_string: "starting"
-cal_role_stop_check_string: "stopping"
-cal_role_running_check_string: "running"
-cal_role_stopped_check_string: "stopped"
+cal_start_check_string: "starting"
+cal_stop_check_string: "stopping"
+cal_running_check_string: "running"
+cal_stopped_check_string: "stopped"
 
 # Force kill configuration
-cal_role_allow_force_kill: true
+cal_allow_force_kill: true
 
 # Timing configuration
-cal_role_post_kill_wait_seconds: 3
-cal_role_retry_delay: 3
-cal_role_start_retries: 3
-cal_role_stop_retries: 3
-cal_role_stop_kill_retries: 2
-cal_role_script_timeout: 300
+cal_post_kill_wait_seconds: 3
+cal_retry_delay: 3
+cal_start_retries: 3
+cal_stop_retries: 3
+cal_stop_kill_retries: 2
+cal_script_timeout: 300
 
 # Return code configuration
-cal_role_start_check_rc: true
-cal_role_start_expect_zero_rc: true
-cal_role_stop_check_rc: true
-cal_role_stop_expect_zero_rc: true
-cal_role_status_check_rc: true
-cal_role_status_expect_zero_rc: true
+cal_start_check_rc: true
+cal_start_expect_zero_rc: true
+cal_stop_check_rc: true
+cal_stop_expect_zero_rc: true
+cal_status_check_rc: true
+cal_status_expect_zero_rc: true
 
 # Service operation to perform (start, stop, status)
-cal_role_service_action: "status"
+cal_service_action: "status"
 ```
 
 ### Service-Specific Variables
@@ -170,14 +170,14 @@ cal_role_service_action: "status"
 Override defaults in service var files (`vars/*.yml`):
 
 ```yaml
-cal_role_service_name: "myservice"
-cal_role_service_script: "/opt/myapp/control.sh"
-cal_role_process_identifier: "java.*myservice"
-cal_role_retry_delay: 5
+cal_service_name: "myservice"
+cal_service_script: "/opt/myapp/control.sh"
+cal_process_identifier: "java.*myservice"
+cal_retry_delay: 5
 
 # For scripts with backwards return codes
-cal_role_stop_expect_zero_rc: false
-cal_role_status_expect_zero_rc: false
+cal_stop_expect_zero_rc: false
+cal_status_expect_zero_rc: false
 ```
 
 ## Advanced Usage
@@ -188,8 +188,8 @@ Some scripts return non-zero for success and zero for failure:
 
 ```bash
 ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=stop \
-  -e "cal_role_stop_expect_zero_rc=false" \
-  -e "cal_role_status_expect_zero_rc=false"
+  -e "cal_stop_expect_zero_rc=false" \
+  -e "cal_status_expect_zero_rc=false"
 ```
 
 ### Ignore Return Codes Completely
@@ -198,8 +198,8 @@ Only validate via output strings:
 
 ```bash
 ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=start \
-  -e "cal_role_start_check_rc=false" \
-  -e "cal_role_status_check_rc=false"
+  -e "cal_start_check_rc=false" \
+  -e "cal_status_check_rc=false"
 ```
 
 ### Disable Force Kill for Safety
@@ -208,7 +208,7 @@ Prevent automatic pkill fallback:
 
 ```bash
 ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=stop \
-  -e "cal_role_allow_force_kill=false"
+  -e "cal_allow_force_kill=false"
 ```
 
 ### Override Per Service
@@ -217,10 +217,10 @@ Use extra-vars files for complex overrides:
 
 ```yaml
 # custom_foo.yml
-cal_role_retry_delay: 10
-cal_role_stop_expect_zero_rc: false
-cal_role_process_identifier: "java.*custom_pattern"
-cal_role_allow_force_kill: false
+cal_retry_delay: 10
+cal_stop_expect_zero_rc: false
+cal_process_identifier: "java.*custom_pattern"
+cal_allow_force_kill: false
 ```
 
 ```bash
@@ -240,11 +240,11 @@ Before any operation, the role validates:
 ### Start Operation
 
 1. **Idempotency check**: Skip if service already running
-2. Execute `cal_role_service_script start`
-3. Validate output contains `cal_role_start_check_string` ("starting")
-4. Validate return code (if `cal_role_start_check_rc` is true)
-5. **Retry loop**: Check status up to 3 times with `cal_role_retry_delay` between attempts
-6. Validate output contains `cal_role_running_check_string` ("running")
+2. Execute `cal_service_script start`
+3. Validate output contains `cal_start_check_string` ("starting")
+4. Validate return code (if `cal_start_check_rc` is true)
+5. **Retry loop**: Check status up to 3 times with `cal_retry_delay` between attempts
+6. Validate output contains `cal_running_check_string` ("running")
 
 ### Stop Operation (Block-Rescue Pattern)
 
@@ -252,23 +252,23 @@ Before any operation, the role validates:
 1. **Idempotency check**: Skip if service already stopped
 
 **Block (graceful stop):**
-1. Execute `cal_role_service_script stop`
-2. Validate output contains `cal_role_stop_check_string` ("stopping")
-3. **Retry loop**: Check status up to 3 times with `cal_role_retry_delay` between attempts
-4. Validate output contains `cal_role_stopped_check_string` ("stopped")
+1. Execute `cal_service_script stop`
+2. Validate output contains `cal_stop_check_string` ("stopping")
+3. **Retry loop**: Check status up to 3 times with `cal_retry_delay` between attempts
+4. Validate output contains `cal_stopped_check_string` ("stopped")
 
-**Rescue (force kill - if block fails and `cal_role_allow_force_kill` is true):**
-1. **Validate**: Assert `cal_role_allow_force_kill` is true
-2. **Validate**: Assert `cal_role_process_identifier` is >= 5 characters (specificity check)
+**Rescue (force kill - if block fails and `cal_allow_force_kill` is true):**
+1. **Validate**: Assert `cal_allow_force_kill` is true
+2. **Validate**: Assert `cal_process_identifier` is >= 5 characters (specificity check)
 3. Log failure message
-4. Execute `pkill -9 -f -- "{{ cal_role_process_identifier }}"` (properly quoted for security)
-5. Wait `cal_role_post_kill_wait_seconds`
+4. Execute `pkill -9 -f -- "{{ cal_process_identifier }}"` (properly quoted for security)
+5. Wait `cal_post_kill_wait_seconds`
 6. **Retry loop**: Verify service stopped with 2 retries
 7. Validate service is stopped
 
 ### Status Check
 
-1. Execute `cal_role_service_script status`
+1. Execute `cal_service_script status`
 2. Display full status output
 3. Show return code
 4. Indicate if service is running or stopped
@@ -277,9 +277,9 @@ Before any operation, the role validates:
 
 1. **Create vars file** (`vars/newservice.yml`):
    ```yaml
-   cal_role_service_name: "newservice"
-   cal_role_service_script: "/scripts/newservice.sh"
-   cal_role_process_identifier: "COMPONENT=newservice"
+   cal_service_name: "newservice"
+   cal_service_script: "/scripts/newservice.sh"
+   cal_process_identifier: "COMPONENT=newservice"
    inventory_group: "newservice_servers"
    ```
 
@@ -297,9 +297,9 @@ Before any operation, the role validates:
      vars_files:
        - vars/newservice.yml
      vars:
-       cal_role_service_action: "{{ service_action | default('status') }}"
+       cal_service_action: "{{ service_action | default('status') }}"
      roles:
-       - cal_role
+       - cal
    ```
 
 4. **Update services registry** (`vars/services.yml`) for documentation:
@@ -320,22 +320,22 @@ Check the stop check string matches your script output:
 # Should output something containing "stopping"
 ```
 
-Adjust `cal_role_stop_check_string` in vars file if needed.
+Adjust `cal_stop_check_string` in vars file if needed.
 
 ### Return code validation failing
 
 Your script may have non-standard return codes. Either:
-- Disable RC checking: `cal_role_stop_check_rc: false`
-- Invert RC logic: `cal_role_stop_expect_zero_rc: false`
+- Disable RC checking: `cal_stop_check_rc: false`
+- Invert RC logic: `cal_stop_expect_zero_rc: false`
 
 ### Process kill not working
 
-Verify `cal_role_process_identifier` matches your running process:
+Verify `cal_process_identifier` matches your running process:
 ```bash
 ps aux | grep "COMPONENT=foo"
 ```
 
-Adjust `cal_role_process_identifier` in vars file if needed.
+Adjust `cal_process_identifier` in vars file if needed.
 
 **IMPORTANT - Test Process Kill Patterns Before Production:**
 
@@ -361,13 +361,13 @@ If your pattern is too broad, you risk killing unrelated processes. Use specific
 - ❌ Bad: `"foo"` (too short, too generic)
 - ❌ Bad: `"python"` (would kill ALL Python processes)
 
-Consider testing in a non-production environment first, or disable force kill initially with `cal_role_allow_force_kill: false` until patterns are validated.
+Consider testing in a non-production environment first, or disable force kill initially with `cal_allow_force_kill: false` until patterns are validated.
 
 ### Force kill is disabled
 
 If you see an assertion failure about force kill being disabled:
 - Either fix the service script so it stops gracefully
-- Or explicitly enable force kill: `cal_role_allow_force_kill: true`
+- Or explicitly enable force kill: `cal_allow_force_kill: true`
 
 ### Process identifier too short
 
@@ -431,33 +431,33 @@ During service stop operations, you can configure the framework to wait for spec
 **How It Works:**
 
 1. After stopping the first service (foo), the file monitor checks the configured directory
-2. It waits up to `cal_role_file_monitor_timeout` seconds for matching files to be deleted
+2. It waits up to `cal_file_monitor_timeout` seconds for matching files to be deleted
 3. If files remain after timeout, it gathers hostname, filenames, and file stats (size, timestamp, owner, permissions)
 4. Event is recorded and added to the consolidated report (sent at end of workflow)
-5. Optionally fails the playbook (controlled by `cal_role_file_monitor_fail_on_timeout`)
+5. Optionally fails the playbook (controlled by `cal_file_monitor_fail_on_timeout`)
 
 ### Configuration Example
 
 ```yaml
 # Enable file monitoring for cleanup between foo and bar services
-cal_role_file_monitor_enabled: true
-cal_role_file_monitor_path: "/var/app/temp"
-cal_role_file_monitor_patterns:
+cal_file_monitor_enabled: true
+cal_file_monitor_path: "/var/app/temp"
+cal_file_monitor_patterns:
   - "*.tmp"
   - "*.lock"
   - "*.pid"
-cal_role_file_monitor_timeout: 120
-cal_role_file_monitor_check_interval: 5
-cal_role_file_monitor_fail_on_timeout: false
+cal_file_monitor_timeout: 120
+cal_file_monitor_check_interval: 5
+cal_file_monitor_fail_on_timeout: false
 
 # Email configuration
-cal_role_email_enabled: true
-cal_role_email_smtp_host: "mail.example.com"
-cal_role_email_smtp_port: 587
-cal_role_email_from: "ansible@myserver.com"
-cal_role_email_to: "ops-team@example.com"
-cal_role_email_subject_prefix: "[Production Alert]"
-cal_role_email_secure: "starttls"
+cal_email_enabled: true
+cal_email_smtp_host: "mail.example.com"
+cal_email_smtp_port: 587
+cal_email_from: "ansible@myserver.com"
+cal_email_to: "ops-team@example.com"
+cal_email_subject_prefix: "[Production Alert]"
+cal_email_secure: "starttls"
 ```
 
 ### Email Report Format
@@ -586,7 +586,7 @@ To skip file monitoring (enabled by default in production), disable it:
 ```bash
 ansible-playbook -i inventory/hosts orchestrate.yml \
   -e service_action=stop \
-  -e cal_role_file_monitor_enabled=false
+  -e cal_file_monitor_enabled=false
 ```
 
 ## Examples
@@ -602,9 +602,9 @@ Use the role directly for single service operations:
   vars_files:
     - vars/foo.yml
   vars:
-    cal_role_service_action: "stop"
+    cal_service_action: "stop"
   roles:
-    - cal_role
+    - cal
 ```
 
 ### Custom Validation Strings
@@ -613,12 +613,12 @@ Override check strings for services with different output:
 
 ```yaml
 # vars/custom.yml
-cal_role_service_name: "custom"
-cal_role_service_script: "/opt/custom/control.sh"
-cal_role_start_check_string: "Service is starting"
-cal_role_running_check_string: "Service is active"
-cal_role_stop_check_string: "Shutdown initiated"
-cal_role_stopped_check_string: "Service is inactive"
+cal_service_name: "custom"
+cal_service_script: "/opt/custom/control.sh"
+cal_start_check_string: "Service is starting"
+cal_running_check_string: "Service is active"
+cal_stop_check_string: "Shutdown initiated"
+cal_stopped_check_string: "Service is inactive"
 ```
 
 ### Mixed Return Code Behavior
@@ -627,51 +627,51 @@ Different commands may have different RC behaviors:
 
 ```yaml
 # vars/mixed.yml
-cal_role_service_name: "mixed"
-cal_role_stop_expect_zero_rc: false   # stop returns 1 for success
-cal_role_status_expect_zero_rc: true  # status returns 0 for success
+cal_service_name: "mixed"
+cal_stop_expect_zero_rc: false   # stop returns 1 for success
+cal_status_expect_zero_rc: true  # status returns 0 for success
 ```
 
 ## Configuration Variables Reference
 
 ### Timing & Retry Configuration
 
-- `cal_role_post_kill_wait_seconds` (default: 3) - Seconds to wait after force kill before verification
-- `cal_role_retry_delay` (default: 3) - Seconds between retry attempts
-- `cal_role_start_retries` (default: 3) - Number of retries for start status verification
-- `cal_role_stop_retries` (default: 3) - Number of retries for graceful stop verification
-- `cal_role_stop_kill_retries` (default: 2) - Number of retries after force kill
-- `cal_role_script_timeout` (default: 300) - Maximum seconds for any script execution before timeout
+- `cal_post_kill_wait_seconds` (default: 3) - Seconds to wait after force kill before verification
+- `cal_retry_delay` (default: 3) - Seconds between retry attempts
+- `cal_start_retries` (default: 3) - Number of retries for start status verification
+- `cal_stop_retries` (default: 3) - Number of retries for graceful stop verification
+- `cal_stop_kill_retries` (default: 2) - Number of retries after force kill
+- `cal_script_timeout` (default: 300) - Maximum seconds for any script execution before timeout
 
 Adjust these based on your service's startup/shutdown characteristics. Services that take longer to start/stop should have higher retry counts and delays.
 
 ### File Monitoring Configuration
 
-- `cal_role_file_monitor_enabled` (default: false) - Enable file deletion monitoring
-- `cal_role_file_monitor_path` (default: "/tmp") - Directory path to monitor
-- `cal_role_file_monitor_patterns` (default: ["*.tmp", "*.lock"]) - List of file patterns to monitor
-- `cal_role_file_monitor_timeout` (default: 300) - Maximum seconds to wait for file deletion
-- `cal_role_file_monitor_check_interval` (default: 5) - Seconds between file checks
-- `cal_role_file_monitor_fail_on_timeout` (default: true) - Fail playbook if files remain after timeout
+- `cal_file_monitor_enabled` (default: false) - Enable file deletion monitoring
+- `cal_file_monitor_path` (default: "/tmp") - Directory path to monitor
+- `cal_file_monitor_patterns` (default: ["*.tmp", "*.lock"]) - List of file patterns to monitor
+- `cal_file_monitor_timeout` (default: 300) - Maximum seconds to wait for file deletion
+- `cal_file_monitor_check_interval` (default: 5) - Seconds between file checks
+- `cal_file_monitor_fail_on_timeout` (default: true) - Fail playbook if files remain after timeout
 
 ### Email Notification Configuration
 
-- `cal_role_email_enabled` (default: true) - Enable email notifications
-- `cal_role_email_smtp_host` (default: "localhost") - SMTP server hostname
-- `cal_role_email_smtp_port` (default: 25) - SMTP server port
-- `cal_role_email_from` (default: "ansible@{{ inventory_hostname }}") - From email address
-- `cal_role_email_to` (default: "admin@example.com") - To email address
-- `cal_role_email_subject_prefix` (default: "[Ansible Alert]") - Email subject prefix
-- `cal_role_email_secure` (default: "never") - Email security (never/try/always)
+- `cal_email_enabled` (default: true) - Enable email notifications
+- `cal_email_smtp_host` (default: "localhost") - SMTP server hostname
+- `cal_email_smtp_port` (default: 25) - SMTP server port
+- `cal_email_from` (default: "ansible@{{ inventory_hostname }}") - From email address
+- `cal_email_to` (default: "admin@example.com") - To email address
+- `cal_email_subject_prefix` (default: "[Ansible Alert]") - Email subject prefix
+- `cal_email_secure` (default: "never") - Email security (never/try/always)
 
 ## Security Considerations
 
 1. **Input Validation**: Service action is validated against a whitelist [start, stop, status] to prevent path traversal attacks
-2. **Force Kill Control**: `cal_role_allow_force_kill` boolean provides explicit opt-in for dangerous pkill operations
+2. **Force Kill Control**: `cal_allow_force_kill` boolean provides explicit opt-in for dangerous pkill operations
 3. **Process Identifier Validation**: Enforces minimum 5-character length to prevent accidentally killing wrong processes
 4. **Shell Injection Protection**: Process identifier is properly quoted with Ansible's `quote` filter
-5. **Privilege Escalation**: Explicit become controls (`cal_role_service_become`) with user and flags configuration
-6. **Script Timeout**: All script executions have configurable timeout (`cal_role_script_timeout`) to prevent hung processes from blocking playbooks indefinitely
+5. **Privilege Escalation**: Explicit become controls (`cal_service_become`) with user and flags configuration
+6. **Script Timeout**: All script executions have configurable timeout (`cal_script_timeout`) to prevent hung processes from blocking playbooks indefinitely
 
 ## Best Practices
 
@@ -681,7 +681,7 @@ Adjust these based on your service's startup/shutdown characteristics. Services 
 4. **Use specific process identifiers** (>= 5 chars) to avoid killing wrong processes
 5. **Keep service vars files in version control** for reproducibility
 6. **Document custom configurations** in service-specific README files
-7. **Disable force kill in production** unless absolutely necessary (`cal_role_allow_force_kill: false`)
+7. **Disable force kill in production** unless absolutely necessary (`cal_allow_force_kill: false`)
 8. **Run ansible-lint** before committing changes to catch issues early
 
 ## Development
@@ -709,7 +709,7 @@ MIT License - See [LICENSE](LICENSE) file for details.
 When adding new services or features:
 1. Maintain the DRY principle
 2. Keep service-specific config in vars files
-3. Use `cal_role_` prefix for all role variables
+3. Use `cal_` prefix for all role variables
 4. Update this README with new features
 5. Run `ansible-lint` to ensure code quality
 6. Test thoroughly before deploying to production

@@ -1,0 +1,17 @@
+---
+- name: "Check service status for {{ cal_service_name }}"
+  ansible.builtin.command: "{{ cal_service_script }} status"
+  register: cal_status_result
+  failed_when: false
+  changed_when: false
+  async: "{{ cal_script_timeout }}"
+  poll: 1
+
+- name: "Display service status for {{ cal_service_name }}"
+  ansible.builtin.debug:
+    msg:
+      - "Service: {{ cal_service_name }}"
+      - "Status output: {{ cal_status_result.stdout }}"
+      - "Return code: {{ cal_status_result.rc }}"
+      - "Running: {{ 'Yes' if cal_running_check_string in cal_status_result.stdout else 'No' }}"
+      - "Stopped: {{ 'Yes' if cal_stopped_check_string in cal_status_result.stdout else 'No' }}"

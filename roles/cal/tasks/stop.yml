@@ -1,0 +1,125 @@
+---
+# Idempotency pre-check
+- name: "Check if service is already stopped for {{ cal_service_name }}"
+  ansible.builtin.command: "{{ cal_service_script }} status"
+  register: cal_pre_stop_check
+  failed_when: false
+  changed_when: false
+  async: "{{ cal_script_timeout }}"
+  poll: 1
+
+- name: "Service already stopped, skipping stop for {{ cal_service_name }}"
+  ansible.builtin.debug:
+    msg: "{{ cal_service_name }} is already stopped, skipping"
+  when: cal_stopped_check_string in cal_pre_stop_check.stdout
+
+- name: "Stop service with block-rescue pattern for {{ cal_service_name }}"
+  when: cal_stopped_check_string not in cal_pre_stop_check.stdout
+  block:
+    - name: "Stop service for {{ cal_service_name }}"
+      ansible.builtin.command: "{{ cal_service_script }} stop"
+      register: cal_stop_result
+      changed_when: cal_stop_result.rc == 0
+      async: "{{ cal_script_timeout }}"
+      poll: 1
+      failed_when: >
+        (cal_stop_check_string not in cal_stop_result.stdout) or
+        (cal_stop_check_rc and
+          ((cal_stop_expect_zero_rc and cal_stop_result.rc != 0) or
+           (not cal_stop_expect_zero_rc and cal_stop_result.rc == 0)))
+
+    - name: "Verify service has stopped for {{ cal_service_name }}"
+      ansible.builtin.command: "{{ cal_service_script }} status"
+      register: cal_status_result
+      until: cal_stopped_check_string in cal_status_result.stdout
+      retries: "{{ cal_stop_retries }}"
+      delay: "{{ cal_retry_delay }}"
+      async: "{{ cal_script_timeout }}"
+      poll: 1
+      changed_when: false
+      failed_when: >
+        (cal_stopped_check_string not in cal_status_result.stdout) or
+        (cal_status_check_rc and
+          ((cal_status_expect_zero_rc and cal_status_result.rc != 0) or
+           (not cal_status_expect_zero_rc and cal_status_result.rc == 0)))
+
+    - name: "Service stopped successfully for {{ cal_service_name }}"
+      ansible.builtin.debug:
+        msg: "{{ cal_service_name }} stopped successfully"
+
+  rescue:
+    - name: "Validate force kill is allowed for {{ cal_service_name }}"
+      ansible.builtin.assert:
+        that:
+          - cal_allow_force_kill | bool
+        fail_msg: "Service {{ cal_service_name }} failed to stop gracefully, but force kill is disabled (cal_allow_force_kill=false)"
+        success_msg: "Force kill is allowed, proceeding with pkill"
+
+    - name: "Validate process identifier is safe for {{ cal_service_name }}"
+      ansible.builtin.assert:
+        that:
+          - cal_process_identifier is defined
+          - cal_process_identifier | length > 0
+          - cal_process_identifier | length >= 5
+        fail_msg: "cal_process_identifier is too short or empty (must be >= 5 chars): '{{ cal_process_identifier | default('') }}'"
+        success_msg: "Process identifier is sufficiently specific: {{ cal_process_identifier }}"
+
+    - name: "Service did not stop gracefully, killing process for {{ cal_service_name }}"
+      ansible.builtin.debug:
+        msg: "{{ cal_service_name }} failed to stop gracefully, attempting to kill process with identifier: {{ cal_process_identifier }}"
+
+    - name: "Capture process details before force kill for {{ cal_service_name }}"
+      ansible.builtin.shell: |
+        set -o pipefail
+        ps aux | grep -F "{{ cal_process_identifier }}" | grep -v grep || true
+      register: cal_pre_kill_ps
+      changed_when: false
+      failed_when: false
+
+    - name: "Kill process by identifier for {{ cal_service_name }}"
+      ansible.builtin.command:
+        cmd: "pkill -9 -f -- {{ cal_process_identifier | quote }}"
+      register: cal_kill_result
+      changed_when: cal_kill_result.rc == 0
+      failed_when: cal_kill_result.rc not in [0, 1]
+
+    - name: "Wait after kill seconds - {{ cal_post_kill_wait_seconds }}"
+      ansible.builtin.pause:
+        seconds: "{{ cal_post_kill_wait_seconds }}"
+
+    - name: "Verify process is dead for {{ cal_service_name }}"
+      ansible.builtin.command: "{{ cal_service_script }} status"
+      register: cal_final_status
+      until: cal_stopped_check_string in cal_final_status.stdout
+      retries: "{{ cal_stop_kill_retries }}"
+      delay: "{{ cal_retry_delay }}"
+      async: "{{ cal_script_timeout }}"
+      poll: 1
+      changed_when: false
+      failed_when: >
+        (cal_stopped_check_string not in cal_final_status.stdout) or
+        (cal_status_check_rc and
+          ((cal_status_expect_zero_rc and cal_final_status.rc != 0) or
+           (not cal_status_expect_zero_rc and cal_final_status.rc == 0)))
+
+    - name: "Process killed successfully for {{ cal_service_name }}"
+      ansible.builtin.debug:
+        msg: "{{ cal_service_name }} process killed successfully, service is now stopped"
+
+    - name: "Get current timestamp for force kill event"
+      ansible.builtin.command: date -u +"%Y-%m-%dT%H:%M:%SZ"
+      register: cal_kill_timestamp
+      changed_when: false
+      when: cal_kill_result.rc == 0
+
+    - name: "Record force kill event for reporting"
+      ansible.builtin.set_fact:
+        cal_force_kill_events: "{{ cal_force_kill_events | default([]) + [kill_event] }}"
+      vars:
+        kill_event:
+          hostname: "{{ inventory_hostname }}"
+          service_name: "{{ cal_service_name }}"
+          timestamp: "{{ cal_kill_timestamp.stdout }}"
+          process_identifier: "{{ cal_process_identifier }}"
+          ps_details: "{{ cal_pre_kill_ps.stdout }}"
+      when: cal_kill_result.rc == 0
