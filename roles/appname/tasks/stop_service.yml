@@ -1,0 +1,21 @@
+---
+# Service module-based stop (for systemd/init.d services)
+- name: "Stop service using service module for {{ appname_service_name }}"
+  ansible.builtin.systemd:
+    name: "{{ appname_service_name }}"
+    state: stopped
+  register: appname_stop_result
+
+- name: "Wait for service to be stopped for {{ appname_service_name }}"
+  ansible.builtin.systemd:
+    name: "{{ appname_service_name }}"
+  register: appname_status_result
+  until: appname_status_result.status.ActiveState in ["inactive", "failed"]
+  retries: "{{ appname_stop_retries }}"
+  delay: "{{ appname_retry_delay }}"
+  when: appname_stop_result is changed
+
+- name: "Service stopped successfully for {{ appname_service_name }}"
+  ansible.builtin.debug:
+    msg: "{{ appname_service_name }} stopped successfully"
+  when: appname_stop_result is changed

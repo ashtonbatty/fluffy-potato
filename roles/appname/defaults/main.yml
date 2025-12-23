@@ -1,9 +1,17 @@
 ---
 # Service configuration
 appname_service_name: "myservice"
+
+# Script-based service control (optional)
+# If appname_service_script is defined, the role will use the script for service operations
+# If appname_service_script is not defined, the role will use Ansible's systemd module instead
 appname_service_script: "/scripts/{{ appname_service_name }}.sh"
 
-# Process identification for kill operation
+# Service module configuration (used when appname_service_script is not defined)
+# appname_service_enabled: true  # Whether to enable the service at boot (optional)
+# appname_service_daemon_reload: false  # Whether to reload systemd daemon before operation
+
+# Process identification for kill operation (only used with script-based services)
 appname_process_identifier: "COMPONENT={{ appname_service_name }}"
 
 # Privilege escalation for service operations

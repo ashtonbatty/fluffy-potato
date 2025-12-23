@@ -44,9 +44,13 @@ appname_status_expected_rc: 0
 appname_service_action: "status"
 ```
 
-### Service-Specific Variables
+### Service Control Modes
 
-Override defaults in service var files (`vars/*.yml`):
+The role supports two modes of operation:
+
+#### Script-Based Mode (Default)
+
+When `appname_service_script` is defined, the role uses custom control scripts:
 
 ```yaml
 appname_service_name: "myservice"
@@ -58,4 +62,35 @@ appname_retry_delay: 5
 appname_stop_expected_rc: 1  # Non-zero expected
 appname_status_expected_rc: 1  # Non-zero expected
 ```
+
+This mode provides:
+- Full control over service lifecycle via custom scripts
+- Output string validation
+- Return code validation
+- Automatic fallback to force kill if graceful stop fails
+
+#### Service Module Mode
+
+When `appname_service_script` is **not defined**, the role uses Ansible's systemd module:
+
+```yaml
+appname_service_name: "myservice"
+# appname_service_script not defined - will use systemd module
+
+# Optional service module configuration
+appname_service_enabled: true  # Enable service at boot
+appname_service_daemon_reload: false  # Reload systemd daemon
+```
+
+This mode provides:
+- Standard systemd service management
+- No custom scripts required
+- Automatic idempotency
+- Works with any systemd-managed service
+
+**To use service module mode**, simply omit the `appname_service_script` variable in your service vars file.
+
+### Service-Specific Variables
+
+Override defaults in service var files (`vars/*.yml`).
 

@@ -1,0 +1,17 @@
+---
+# Service module-based status (for systemd/init.d services)
+- name: "Check service status using service module for {{ appname_service_name }}"
+  ansible.builtin.systemd:
+    name: "{{ appname_service_name }}"
+  register: appname_status_result
+  failed_when: false
+
+- name: "Display service status for {{ appname_service_name }}"
+  ansible.builtin.debug:
+    msg:
+      - "Service: {{ appname_service_name }}"
+      - "Active State: {{ appname_status_result.status.ActiveState }}"
+      - "Sub State: {{ appname_status_result.status.SubState }}"
+      - "Load State: {{ appname_status_result.status.LoadState }}"
+      - "Running: {{ 'Yes' if appname_status_result.status.ActiveState == 'active' else 'No' }}"
+      - "Enabled: {{ 'Yes' if appname_status_result.status.UnitFileState == 'enabled' else 'No' }}"

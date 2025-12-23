@@ -1,0 +1,23 @@
+---
+# Service module-based start (for systemd/init.d services)
+- name: "Start service using service module for {{ appname_service_name }}"
+  ansible.builtin.systemd:
+    name: "{{ appname_service_name }}"
+    state: started
+    enabled: "{{ appname_service_enabled | default(omit) }}"
+    daemon_reload: "{{ appname_service_daemon_reload | default(false) }}"
+  register: appname_start_result
+
+- name: "Wait for service to be running for {{ appname_service_name }}"
+  ansible.builtin.systemd:
+    name: "{{ appname_service_name }}"
+  register: appname_status_result
+  until: appname_status_result.status.ActiveState == "active"
+  retries: "{{ appname_start_retries }}"
+  delay: "{{ appname_retry_delay }}"
+  when: appname_start_result is changed
+
+- name: "Service started successfully for {{ appname_service_name }}"
+  ansible.builtin.debug:
+    msg: "{{ appname_service_name }} started successfully and is running"
+  when: appname_start_result is changed

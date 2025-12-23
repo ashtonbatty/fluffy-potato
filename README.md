@@ -4,6 +4,7 @@ A flexible, DRY Ansible framework for managing custom services with graceful sto
 
 ## Key Features
 
+- **Dual Mode Support** - Use custom control scripts OR Ansible's systemd module for service management
 - **Graceful Service Management** - Automatic fallback to force-kill if graceful shutdown fails
 - **Comprehensive Workflow Reporting** - Email reports for ALL start/stop runs with timing, events, and failure details
 - **Separate Start/Stop Workflows** - Different service ordering (Start: foo → bar → elephant, Stop: elephant → bar → foo)
@@ -15,8 +16,10 @@ A flexible, DRY Ansible framework for managing custom services with graceful sto
 ## Prerequisites
 
 - Ansible 2.9 or higher
-- Service control scripts (e.g., `/scripts/foo.sh`, `/scripts/bar.sh`)
-- Sufficient permissions to kill processes (for force-kill fallback)
+- Either:
+  - Custom service control scripts (e.g., `/scripts/foo.sh`, `/scripts/bar.sh`), OR
+  - Systemd-managed services
+- Sufficient permissions to manage services (sudo/become for systemd or process kill)
 
 ## Quick Start
 
@@ -37,13 +40,21 @@ host3.example.com
 
 ### 2. Configure Services
 
-Each service has a vars file in `vars/` with `appname_` prefixed variables. Example `vars/foo.yml`:
+Each service has a vars file in `vars/` with `appname_` prefixed variables.
 
+**For custom script-based services** (`vars/foo.yml`):
 ```yaml
 appname_service_name: "foo"
 appname_service_script: "/scripts/foo.sh"
 appname_process_identifier: "COMPONENT=foo"
 inventory_group: "foo_servers"
+```
+
+**For systemd-managed services** (`vars/nginx.yml`):
+```yaml
+appname_service_name: "nginx"
+# appname_service_script not defined - uses systemd module
+inventory_group: "webservers"
 ```
 
 ### 3. Run Operations

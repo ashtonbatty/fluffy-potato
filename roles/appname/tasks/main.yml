@@ -17,11 +17,22 @@
   async: "{{ appname_script_timeout }}"
   poll: 1
   failed_when: not appname_script_stat.stat.exists or not appname_script_stat.stat.executable
+  when: appname_service_script is defined
 
-- name: "Execute service action - {{ appname_service_action }}"
+- name: "Execute service action - {{ appname_service_action }} (script-based)"
   become: "{{ appname_service_become }}"
   become_user: "{{ appname_service_become_user }}"
   become_flags: "{{ appname_service_become_flags }}"
+  when: appname_service_script is defined
   block:
-    - name: "Include action tasks - {{ appname_service_action }}"
+    - name: "Include script-based action tasks - {{ appname_service_action }}"
       ansible.builtin.include_tasks: "{{ appname_service_action }}.yml"
+
+- name: "Execute service action - {{ appname_service_action }} (service module)"
+  become: "{{ appname_service_become }}"
+  become_user: "{{ appname_service_become_user }}"
+  become_flags: "{{ appname_service_become_flags }}"
+  when: appname_service_script is not defined
+  block:
+    - name: "Include service module action tasks - {{ appname_service_action }}"
+      ansible.builtin.include_tasks: "{{ appname_service_action }}_service.yml"
