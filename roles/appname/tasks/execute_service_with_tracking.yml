@@ -1,0 +1,59 @@
+---
+# Reusable task for executing service operations with workflow tracking
+# Required variables:
+#   - service_item: dict with 'name', 'host_group', 'vars_file'
+#   - service_action: action to perform (start/stop/status)
+
+- name: "Record task start time for {{ service_item.name }} service"
+  ansible.builtin.set_fact:
+    task_start_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
+  delegate_to: localhost
+  delegate_facts: true
+  run_once: true  # noqa: run-once
+
+- name: "Execute {{ service_item.name }} service {{ service_action }}"
+  block:
+    - name: "Include appname role for {{ service_item.name }}"
+      ansible.builtin.include_role:
+        name: cal
+
+    - name: "Record successful task completion for {{ service_item.name }} service"
+      ansible.builtin.set_fact:
+        workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
+      vars:
+        task_record:
+          service: "{{ service_item.name }}"
+          action: "{{ service_action }}"
+          start_time: "{{ hostvars['localhost']['task_start_time'] }}"
+          end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
+          status: "success"
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true  # noqa: run-once
+
+  rescue:
+    - name: "Record failed task for {{ service_item.name }} service"
+      ansible.builtin.set_fact:
+        workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
+        workflow_metadata: "{{ hostvars['localhost']['workflow_metadata'] | combine({'workflow_status': 'failed', 'failure_details': failure_info}) }}"
+      vars:
+        task_record:
+          service: "{{ service_item.name }}"
+          action: "{{ service_action }}"
+          start_time: "{{ hostvars['localhost']['task_start_time'] }}"
+          end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
+          status: "failed"
+          error: "{{ ansible_failed_result.msg | default('Unknown error') }}"
+        failure_info:
+          failed_task: "{{ service_item.name }} service {{ service_action }}"
+          failed_service: "{{ service_item.name }}"
+          failure_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
+          error_message: "{{ ansible_failed_result.msg | default('Unknown error') }}"
+          error_details: "{{ ansible_failed_result | to_nice_json }}"
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true  # noqa: run-once
+
+    - name: "Re-raise the failure"
+      ansible.builtin.fail:
+        msg: "Service {{ service_item.name }} {{ service_action }} failed: {{ ansible_failed_result.msg | default('Unknown error') }}"

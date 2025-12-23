@@ -14,8 +14,6 @@
   become: "{{ appname_service_become }}"
   become_user: "{{ appname_service_become_user }}"
   become_flags: "{{ appname_service_become_flags }}"
-  async: "{{ appname_script_timeout }}"
-  poll: 1
   failed_when: not appname_script_stat.stat.exists or not appname_script_stat.stat.executable
   when: appname_service_script is defined
 

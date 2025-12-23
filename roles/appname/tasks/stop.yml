@@ -5,8 +5,6 @@
   register: appname_pre_stop_check
   failed_when: false
   changed_when: false
-  async: "{{ appname_script_timeout }}"
-  poll: 1
 
 - name: "Service already stopped, skipping stop for {{ appname_service_name }}"
   ansible.builtin.debug:
@@ -20,8 +18,6 @@
       ansible.builtin.command: "{{ appname_service_script }} stop"
       register: appname_stop_result
       changed_when: appname_stop_result.rc == 0
-      async: "{{ appname_script_timeout }}"
-      poll: 1
       failed_when: >
         (appname_stop_check_string not in appname_stop_result.stdout) or
         (appname_stop_expected_rc is defined and appname_stop_result.rc != appname_stop_expected_rc)
@@ -32,8 +28,6 @@
       until: appname_stopped_check_string in appname_status_result.stdout
       retries: "{{ appname_stop_retries }}"
       delay: "{{ appname_retry_delay }}"
-      async: "{{ appname_script_timeout }}"
-      poll: 1
       changed_when: false
       failed_when: >
         (appname_stopped_check_string not in appname_status_result.stdout) or
@@ -89,8 +83,6 @@
       until: appname_stopped_check_string in appname_final_status.stdout
       retries: "{{ appname_stop_kill_retries }}"
       delay: "{{ appname_retry_delay }}"
-      async: "{{ appname_script_timeout }}"
-      poll: 1
       changed_when: false
       failed_when: >
         (appname_stopped_check_string not in appname_final_status.stdout) or

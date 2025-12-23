@@ -91,8 +91,8 @@ find . -type f \( -name "*.yml" -o -name "*.yaml" \) \
     -exec sed -i "s/${OLD_NAME}_/${NEW_NAME}_/g" {} +
 print_success "Variable prefixes updated in YAML files"
 
-# 3. Update role references in playbooks
-print_info "Step 3: Updating role references in playbooks"
+# 3. Update role references in playbooks (roles: list)
+print_info "Step 3: Updating role references in playbooks (roles: list)"
 find . -type f \( -name "*.yml" -o -name "*.yaml" \) \
     -not -path "./.git/*" \
     -not -path "./venv/*" \
@@ -100,8 +100,26 @@ find . -type f \( -name "*.yml" -o -name "*.yaml" \) \
     -exec sed -i "s/- ${OLD_NAME}$/- ${NEW_NAME}/g" {} +
 print_success "Role references updated in playbooks"
 
-# 4. Rename workflow playbook files
-print_info "Step 4: Renaming workflow playbook files"
+# 4. Update include_role and import_role name references
+print_info "Step 4: Updating include_role/import_role name references"
+find . -type f \( -name "*.yml" -o -name "*.yaml" \) \
+    -not -path "./.git/*" \
+    -not -path "./venv/*" \
+    -not -path "./.venv/*" \
+    -exec sed -i "s/name: ${OLD_NAME}$/name: ${NEW_NAME}/g" {} +
+print_success "Include/import role references updated"
+
+# 5. Update role_name in meta/main.yml
+print_info "Step 5: Updating role_name in meta/main.yml"
+if [ -f "roles/${NEW_NAME}/meta/main.yml" ]; then
+    sed -i "s/role_name: ${OLD_NAME}$/role_name: ${NEW_NAME}/g" "roles/${NEW_NAME}/meta/main.yml"
+    print_success "Role name updated in meta/main.yml"
+else
+    print_info "No meta/main.yml found, skipping"
+fi
+
+# 6. Rename workflow playbook files
+print_info "Step 6: Renaming workflow playbook files"
 if [ -f "playbooks/${OLD_NAME}_start.yml" ]; then
     mv "playbooks/${OLD_NAME}_start.yml" "playbooks/${NEW_NAME}_start.yml"
     print_success "Renamed ${OLD_NAME}_start.yml -> ${NEW_NAME}_start.yml"
@@ -115,8 +133,8 @@ if [ -f "playbooks/${OLD_NAME}_status.yml" ]; then
     print_success "Renamed ${OLD_NAME}_status.yml -> ${NEW_NAME}_status.yml"
 fi
 
-# 5. Update role references in documentation
-print_info "Step 5: Updating role references in documentation"
+# 7. Update role references in documentation
+print_info "Step 7: Updating role references in documentation"
 find . -type f \( -name "*.md" -o -name "CLAUDE.md" \) \
     -not -path "./.git/*" \
     -exec sed -i "s/${OLD_NAME}_/${NEW_NAME}_/g" {} +
@@ -130,13 +148,15 @@ find . -type f \( -name "*.md" -o -name "CLAUDE.md" \) \
     -exec sed -i "s/- ${OLD_NAME}$/- ${NEW_NAME}/g" {} +
 print_success "Documentation updated"
 
-# 6. Summary
+# 8. Summary
 echo ""
 print_success "Rename operation completed successfully!"
 echo ""
 print_info "Summary of changes:"
 echo "  - Role directory: roles/${OLD_NAME}/ -> roles/${NEW_NAME}/"
 echo "  - Variable prefix: ${OLD_NAME}_ -> ${NEW_NAME}_"
+echo "  - Role name in meta.yml: role_name: ${OLD_NAME} -> role_name: ${NEW_NAME}"
+echo "  - Include/import role references: name: ${OLD_NAME} -> name: ${NEW_NAME}"
 echo "  - Workflow playbooks: ${OLD_NAME}_*.yml -> ${NEW_NAME}_*.yml"
 echo "  - Role references updated in all playbooks and documentation"
 echo ""

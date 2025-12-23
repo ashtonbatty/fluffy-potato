@@ -1,0 +1,59 @@
+---
+# Workflow sequences define the order and type of operations for each workflow
+# Each sequence entry can be either a service operation or a custom task
+
+# Start workflow sequence (forward order: foo -> bar -> elephant)
+start_sequence:
+  - type: service
+    name: foo
+    host_group: foo_servers
+    vars_file: vars/foo.yml
+
+  - type: service
+    name: bar
+    host_group: bar_servers
+    vars_file: vars/bar.yml
+
+  - type: service
+    name: elephant
+    host_group: elephant_servers
+    vars_file: vars/elephant.yml
+
+# Stop workflow sequence (reverse order: elephant -> bar -> file_monitoring -> foo)
+stop_sequence:
+  - type: service
+    name: elephant
+    host_group: elephant_servers
+    vars_file: vars/elephant.yml
+
+  - type: service
+    name: bar
+    host_group: bar_servers
+    vars_file: vars/bar.yml
+
+  - type: custom_task
+    name: file_monitoring
+    task_file: roles/appname/tasks/wait_for_files_deleted.yml
+    description: "Wait for files to be deleted"
+
+  - type: service
+    name: foo
+    host_group: foo_servers
+    vars_file: vars/foo.yml
+
+# Status workflow sequence (same as start)
+status_sequence:
+  - type: service
+    name: foo
+    host_group: foo_servers
+    vars_file: vars/foo.yml
+
+  - type: service
+    name: bar
+    host_group: bar_servers
+    vars_file: vars/bar.yml
+
+  - type: service
+    name: elephant
+    host_group: elephant_servers
+    vars_file: vars/elephant.yml

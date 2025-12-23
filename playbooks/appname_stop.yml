@@ -1,6 +1,6 @@
 ---
-# Stop workflow - services stop in reverse order: elephant -> bar -> foo
-# This playbook is called by orchestrate.yml for stop operations
+# Stop workflow - Refactored with reusable task includes
+# Services execute in reverse order: elephant -> bar -> [file_monitoring] -> foo
 
 - name: "Initialize workflow tracking"
   hosts: localhost
@@ -16,9 +16,7 @@
           ansible_control_node: "{{ ansible_hostname }}"
           workflow_status: "running"
         workflow_tasks: []
-      delegate_to: localhost
       delegate_facts: true
-      run_once: true  # noqa: run-once
 
 - name: "Elephant service - Stop"
   hosts: elephant_servers
@@ -28,56 +26,13 @@
     - ../vars/elephant.yml
   vars:
     appname_service_action: "stop"
+    service_item:
+      name: elephant
   tasks:
-    - name: "Record task start time for elephant service"
-      ansible.builtin.set_fact:
-        task_start_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-      delegate_to: localhost
-      delegate_facts: true
-      run_once: true  # noqa: run-once
-
-    - name: "Execute elephant service stop"
-      block:
-        - name: "Include appname_role for elephant"
-          ansible.builtin.include_role:
-            name: cal
-
-        - name: "Record successful task completion for elephant service"
-          ansible.builtin.set_fact:
-            workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
-          vars:
-            task_record:
-              service: "elephant"
-              action: "stop"
-              start_time: "{{ hostvars['localhost']['task_start_time'] }}"
-              end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-              status: "success"
-          delegate_to: localhost
-          delegate_facts: true
-          run_once: true  # noqa: run-once
-
-      rescue:
-        - name: "Record failed task for elephant service"
-          ansible.builtin.set_fact:
-            workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
-            workflow_metadata: "{{ hostvars['localhost']['workflow_metadata'] | combine({'workflow_status': 'failed', 'failure_details': failure_info}) }}"
-          vars:
-            task_record:
-              service: "elephant"
-              action: "stop"
-              start_time: "{{ hostvars['localhost']['task_start_time'] }}"
-              end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-              status: "failed"
-              error: "{{ ansible_failed_result.msg | default('Unknown error') }}"
-            failure_info:
-              failed_task: "elephant service stop"
-              failed_service: "elephant"
-              failure_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-              error_message: "{{ ansible_failed_result.msg | default('Unknown error') }}"
-              error_details: "{{ ansible_failed_result | to_nice_json }}"
-          delegate_to: localhost
-          delegate_facts: true
-          run_once: true  # noqa: run-once
+    - ansible.builtin.include_tasks:
+        file: ../roles/appname/tasks/execute_service_with_tracking.yml
+      vars:
+        service_action: "stop"
 
 - name: "Bar service - Stop"
   hosts: bar_servers
@@ -87,120 +42,48 @@
     - ../vars/bar.yml
   vars:
     appname_service_action: "stop"
+    service_item:
+      name: bar
   tasks:
     - name: "Skip if previous task failed"
       ansible.builtin.meta: end_play
       when: hostvars['localhost']['workflow_metadata']['workflow_status'] == 'failed'
 
-    - name: "Record task start time for bar service"
-      ansible.builtin.set_fact:
-        task_start_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-      delegate_to: localhost
-      delegate_facts: true
-      run_once: true  # noqa: run-once
+    - ansible.builtin.include_tasks:
+        file: ../roles/appname/tasks/execute_service_with_tracking.yml
+      vars:
+        service_action: "stop"
 
-    - name: "Execute bar service stop"
-      block:
-        - name: "Include appname_role for bar"
-          ansible.builtin.include_role:
-            name: cal
-
-        - name: "Record successful task completion for bar service"
-          ansible.builtin.set_fact:
-            workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
-          vars:
-            task_record:
-              service: "bar"
-              action: "stop"
-              start_time: "{{ hostvars['localhost']['task_start_time'] }}"
-              end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-              status: "success"
-          delegate_to: localhost
-          delegate_facts: true
-          run_once: true  # noqa: run-once
-
-      rescue:
-        - name: "Record failed task for bar service"
-          ansible.builtin.set_fact:
-            workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
-            workflow_metadata: "{{ hostvars['localhost']['workflow_metadata'] | combine({'workflow_status': 'failed', 'failure_details': failure_info}) }}"
-          vars:
-            task_record:
-              service: "bar"
-              action: "stop"
-              start_time: "{{ hostvars['localhost']['task_start_time'] }}"
-              end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-              status: "failed"
-              error: "{{ ansible_failed_result.msg | default('Unknown error') }}"
-            failure_info:
-              failed_task: "bar service stop"
-              failed_service: "bar"
-              failure_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-              error_message: "{{ ansible_failed_result.msg | default('Unknown error') }}"
-              error_details: "{{ ansible_failed_result | to_nice_json }}"
-          delegate_to: localhost
-          delegate_facts: true
-          run_once: true  # noqa: run-once
-
-- name: "Wait for files to be deleted (post-bar, pre-foo)"
+- name: "File monitoring - Wait for file deletion"
   hosts: all_services
   gather_facts: false
-  any_errors_fatal: false
   tasks:
     - name: "Skip if previous task failed"
       ansible.builtin.meta: end_play
       when: hostvars['localhost']['workflow_metadata']['workflow_status'] == 'failed'
 
-    - name: "Record task start time for file monitoring"
+    - name: "Record file monitoring start time"
       ansible.builtin.set_fact:
         task_start_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-      delegate_to: localhost
       delegate_facts: true
       run_once: true  # noqa: run-once
 
-    - name: "Execute file monitoring"
-      block:
-        - name: "Include file monitoring task"
-          ansible.builtin.include_role:
-            name: cal
-            tasks_from: wait_for_files_deleted
+    - name: "Execute file monitoring task"
+      ansible.builtin.include_tasks:
+        file: ../roles/appname/tasks/wait_for_files_deleted.yml
 
-        - name: "Record successful task completion for file monitoring"
-          ansible.builtin.set_fact:
-            workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
-          vars:
-            task_record:
-              service: "file_monitoring"
-              action: "wait_for_deletion"
-              start_time: "{{ hostvars['localhost']['task_start_time'] }}"
-              end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-              status: "success"
-          delegate_to: localhost
-          delegate_facts: true
-          run_once: true  # noqa: run-once
-
-      rescue:
-        - name: "Record failed task for file monitoring"
-          ansible.builtin.set_fact:
-            workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
-            workflow_metadata: "{{ hostvars['localhost']['workflow_metadata'] | combine({'workflow_status': 'failed', 'failure_details': failure_info}) }}"
-          vars:
-            task_record:
-              service: "file_monitoring"
-              action: "wait_for_deletion"
-              start_time: "{{ hostvars['localhost']['task_start_time'] }}"
-              end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-              status: "failed"
-              error: "{{ ansible_failed_result.msg | default('Unknown error') }}"
-            failure_info:
-              failed_task: "file monitoring"
-              failed_service: "file_monitoring"
-              failure_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-              error_message: "{{ ansible_failed_result.msg | default('Unknown error') }}"
-              error_details: "{{ ansible_failed_result | to_nice_json }}"
-          delegate_to: localhost
-          delegate_facts: true
-          run_once: true  # noqa: run-once
+    - name: "Record file monitoring completion"
+      ansible.builtin.set_fact:
+        workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
+      vars:
+        task_record:
+          service: "file_monitoring"
+          action: "wait_for_deletion"
+          start_time: "{{ hostvars['localhost']['task_start_time'] }}"
+          end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
+          status: "success"
+      delegate_facts: true
+      run_once: true  # noqa: run-once
 
 - name: "Foo service - Stop"
   hosts: foo_servers
@@ -210,80 +93,31 @@
     - ../vars/foo.yml
   vars:
     appname_service_action: "stop"
+    service_item:
+      name: foo
   tasks:
     - name: "Skip if previous task failed"
       ansible.builtin.meta: end_play
       when: hostvars['localhost']['workflow_metadata']['workflow_status'] == 'failed'
 
-    - name: "Record task start time for foo service"
+    - ansible.builtin.include_tasks:
+        file: ../roles/appname/tasks/execute_service_with_tracking.yml
+      vars:
+        service_action: "stop"
+
+- name: "Complete workflow and send report"
+  hosts: all_services
+  gather_facts: false
+  tasks:
+    - name: "Mark workflow as complete"
       ansible.builtin.set_fact:
-        task_start_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-      delegate_to: localhost
+        workflow_metadata: "{{ hostvars['localhost']['workflow_metadata'] | combine({'workflow_end_time': lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"'), 'workflow_status': workflow_final_status}) }}"
+      vars:
+        workflow_final_status: "{{ hostvars['localhost']['workflow_metadata']['workflow_status'] if hostvars['localhost']['workflow_metadata']['workflow_status'] == 'failed' else 'success' }}"
       delegate_facts: true
       run_once: true  # noqa: run-once
 
-    - name: "Execute foo service stop"
-      block:
-        - name: "Include appname_role for foo"
-          ansible.builtin.include_role:
-            name: cal
-
-        - name: "Record successful task completion for foo service"
-          ansible.builtin.set_fact:
-            workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
-          vars:
-            task_record:
-              service: "foo"
-              action: "stop"
-              start_time: "{{ hostvars['localhost']['task_start_time'] }}"
-              end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-              status: "success"
-          delegate_to: localhost
-          delegate_facts: true
-          run_once: true  # noqa: run-once
-
-      rescue:
-        - name: "Record failed task for foo service"
-          ansible.builtin.set_fact:
-            workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
-            workflow_metadata: "{{ hostvars['localhost']['workflow_metadata'] | combine({'workflow_status': 'failed', 'failure_details': failure_info}) }}"
-          vars:
-            task_record:
-              service: "foo"
-              action: "stop"
-              start_time: "{{ hostvars['localhost']['task_start_time'] }}"
-              end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-              status: "failed"
-              error: "{{ ansible_failed_result.msg | default('Unknown error') }}"
-            failure_info:
-              failed_task: "foo service stop"
-              failed_service: "foo"
-              failure_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-              error_message: "{{ ansible_failed_result.msg | default('Unknown error') }}"
-              error_details: "{{ ansible_failed_result | to_nice_json }}"
-          delegate_to: localhost
-          delegate_facts: true
-          run_once: true  # noqa: run-once
-
-- name: "Send workflow completion report"
-  hosts: localhost
-  gather_facts: false
-  connection: local
-  tasks:
-    - name: "Mark workflow as successful if not failed"
-      ansible.builtin.set_fact:
-        workflow_metadata: "{{ workflow_metadata | combine(update) }}"
-      vars:
-        update:
-          workflow_status: "{{ workflow_metadata.workflow_status if workflow_metadata.workflow_status == 'failed' else 'success' }}"
-          workflow_end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
-
-    - name: "Include workflow reporting task"
-      ansible.builtin.include_role:
-        name: cal
-        tasks_from: send_workflow_report
-
-    - name: "Fail playbook if workflow failed"
-      ansible.builtin.fail:
-        msg: "Stop workflow failed - see email report for details"
-      when: workflow_metadata.workflow_status == 'failed'
+    - name: "Send comprehensive workflow report"
+      ansible.builtin.include_tasks:
+        file: ../roles/appname/tasks/send_workflow_report.yml
+      run_once: true  # noqa: run-once
