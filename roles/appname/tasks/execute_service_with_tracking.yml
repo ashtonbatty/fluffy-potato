@@ -4,20 +4,20 @@
 #   - service_item: dict with 'name', 'host_group', 'vars_file'
 #   - service_action: action to perform (start/stop/status)
 
-- name: "Record task start time for {{ service_item.name }} service"
+- name: "Record task start time (Service: {{ service_item.name }})"
   ansible.builtin.set_fact:
     task_start_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
   delegate_to: localhost
   delegate_facts: true
   run_once: true  # noqa: run-once
 
-- name: "Execute {{ service_item.name }} service {{ service_action }}"
+- name: "Execute service operation (Service: {{ service_item.name }}, Action: {{ service_action }})"
   block:
-    - name: "Include appname role for {{ service_item.name }}"
+    - name: "Include appname role (Service: {{ service_item.name }})"
       ansible.builtin.include_role:
         name: appname
 
-    - name: "Record successful task completion for {{ service_item.name }} service"
+    - name: "Record successful task completion (Service: {{ service_item.name }})"
       ansible.builtin.set_fact:
         workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
       vars:
@@ -32,7 +32,7 @@
       run_once: true  # noqa: run-once
 
   rescue:
-    - name: "Record failed task for {{ service_item.name }} service"
+    - name: "Record failed task (Service: {{ service_item.name }})"
       ansible.builtin.set_fact:
         workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
         workflow_metadata: "{{ hostvars['localhost']['workflow_metadata'] | combine({'workflow_status': 'failed', 'failure_details': failure_info}) }}"

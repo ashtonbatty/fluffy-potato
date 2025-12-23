@@ -109,10 +109,10 @@ find . -type f \( -name "*.yml" -o -name "*.yaml" \) \
     -exec sed -i "s/name: ${OLD_NAME}$/name: ${NEW_NAME}/g" {} +
 print_success "Include/import role references updated"
 
-# 5. Update role_name in meta/main.yml
+# 5. Update role_name in meta/main.yml (handles YAML indentation)
 print_info "Step 5: Updating role_name in meta/main.yml"
 if [ -f "roles/${NEW_NAME}/meta/main.yml" ]; then
-    sed -i "s/role_name: ${OLD_NAME}$/role_name: ${NEW_NAME}/g" "roles/${NEW_NAME}/meta/main.yml"
+    sed -i "s/role_name: ${OLD_NAME}/role_name: ${NEW_NAME}/g" "roles/${NEW_NAME}/meta/main.yml"
     print_success "Role name updated in meta/main.yml"
 else
     print_info "No meta/main.yml found, skipping"

@@ -46,6 +46,7 @@
     - name: Create test systemd service
       ansible.builtin.copy:
         dest: /etc/systemd/system/systemd-test.service
+        mode: '0644'
         content: |
           [Unit]
           Description=Test Service for Molecule

@@ -1,5 +1,5 @@
 ---
-- name: "Validate service action is allowed - {{ appname_service_action }}"
+- name: "Validate service action is allowed (Action: {{ appname_service_action }})"
   ansible.builtin.assert:
     that:
       - appname_service_action is defined
@@ -7,7 +7,7 @@
     fail_msg: "appname_service_action must be one of: start, stop, status. Got: {{ appname_service_action | default('undefined') }}"
     success_msg: "Service action {{ appname_service_action }} is valid"
 
-- name: "Validate service script exists and is executable - {{ appname_service_script }}"
+- name: "Validate service script exists and is executable (Script: {{ appname_service_script }})"
   ansible.builtin.stat:
     path: "{{ appname_service_script }}"
   register: appname_script_stat
@@ -17,20 +17,20 @@
   failed_when: not appname_script_stat.stat.exists or not appname_script_stat.stat.executable
   when: appname_service_script is defined
 
-- name: "Execute service action - {{ appname_service_action }} (script-based)"
+- name: "Execute service action (script-based) - {{ appname_service_action }}"
   become: "{{ appname_service_become }}"
   become_user: "{{ appname_service_become_user }}"
   become_flags: "{{ appname_service_become_flags }}"
   when: appname_service_script is defined
   block:
-    - name: "Include script-based action tasks - {{ appname_service_action }}"
+    - name: "Include script-based action tasks (Action: {{ appname_service_action }})"
       ansible.builtin.include_tasks: "{{ appname_service_action }}.yml"
 
-- name: "Execute service action - {{ appname_service_action }} (service module)"
+- name: "Execute service action (systemd module) - {{ appname_service_action }}"
   become: "{{ appname_service_become }}"
   become_user: "{{ appname_service_become_user }}"
   become_flags: "{{ appname_service_become_flags }}"
   when: appname_service_script is not defined
   block:
-    - name: "Include service module action tasks - {{ appname_service_action }}"
+    - name: "Include systemd action tasks (Action: {{ appname_service_action }})"
       ansible.builtin.include_tasks: "{{ appname_service_action }}_service.yml"
