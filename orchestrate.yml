@@ -5,34 +5,32 @@
 #   ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=stop
 #   ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=status
 #
-# Services are processed in order: foo -> bar -> elephant
+# This playbook routes to the appropriate workflow based on service_action:
+# - start: Routes to playbooks/cal_start.yml (forward order: foo -> bar -> elephant)
+# - stop: Routes to playbooks/cal_stop.yml (reverse order: elephant -> bar -> foo)
+# - status: Routes to playbooks/cal_status.yml (forward order with workflow reporting)
 
-- name: "Foo service - {{ service_action | default('status') | capitalize }}"
-  hosts: foo_servers
+- name: "Validate service action"
+  hosts: localhost
   gather_facts: false
-  vars_files:
-    - vars/foo.yml
-  vars:
-    cal_role_service_action: "{{ service_action | default('status') }}"
-  roles:
-    - cal_role
+  connection: local
+  tasks:
+    - name: "Check service_action is valid"
+      ansible.builtin.assert:
+        that:
+          - service_action is defined
+          - service_action in ['start', 'stop', 'status']
+        fail_msg: "service_action must be one of: start, stop, status. Got: {{ service_action | default('undefined') }}"
+        success_msg: "Service action validated: {{ service_action }}"
 
-- name: "Bar service - {{ service_action | default('status') | capitalize }}"
-  hosts: bar_servers
-  gather_facts: false
-  vars_files:
-    - vars/bar.yml
-  vars:
-    cal_role_service_action: "{{ service_action | default('status') }}"
-  roles:
-    - cal_role
+- name: "Route to start workflow"
+  ansible.builtin.import_playbook: playbooks/cal_start.yml
+  when: service_action == 'start'
 
-- name: "Elephant service - {{ service_action | default('status') | capitalize }}"
-  hosts: elephant_servers
-  gather_facts: false
-  vars_files:
-    - vars/elephant.yml
-  vars:
-    cal_role_service_action: "{{ service_action | default('status') }}"
-  roles:
-    - cal_role
+- name: "Route to stop workflow"
+  ansible.builtin.import_playbook: playbooks/cal_stop.yml
+  when: service_action == 'stop'
+
+- name: "Route to status workflow"
+  ansible.builtin.import_playbook: playbooks/cal_status.yml
+  when: service_action == 'status'

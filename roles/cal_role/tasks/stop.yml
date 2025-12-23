@@ -5,6 +5,8 @@
   register: cal_role_pre_stop_check
   failed_when: false
   changed_when: false
+  async: "{{ cal_role_script_timeout }}"
+  poll: 1
 
 - name: "Service already stopped, skipping stop for {{ cal_role_service_name }}"
   ansible.builtin.debug:
@@ -18,6 +20,8 @@
       ansible.builtin.command: "{{ cal_role_service_script }} stop"
       register: cal_role_stop_result
       changed_when: cal_role_stop_result.rc == 0
+      async: "{{ cal_role_script_timeout }}"
+      poll: 1
       failed_when: >
         (cal_role_stop_check_string not in cal_role_stop_result.stdout) or
         (cal_role_stop_check_rc and
@@ -28,8 +32,10 @@
       ansible.builtin.command: "{{ cal_role_service_script }} status"
       register: cal_role_status_result
       until: cal_role_stopped_check_string in cal_role_status_result.stdout
-      retries: 3
+      retries: "{{ cal_role_stop_retries }}"
       delay: "{{ cal_role_retry_delay }}"
+      async: "{{ cal_role_script_timeout }}"
+      poll: 1
       changed_when: false
       failed_when: >
         (cal_role_stopped_check_string not in cal_role_status_result.stdout) or
@@ -62,6 +68,14 @@
       ansible.builtin.debug:
         msg: "{{ cal_role_service_name }} failed to stop gracefully, attempting to kill process with identifier: {{ cal_role_process_identifier }}"
 
+    - name: "Capture process details before force kill for {{ cal_role_service_name }}"
+      ansible.builtin.shell: |
+        set -o pipefail
+        ps aux | grep -F "{{ cal_role_process_identifier }}" | grep -v grep || true
+      register: cal_role_pre_kill_ps
+      changed_when: false
+      failed_when: false
+
     - name: "Kill process by identifier for {{ cal_role_service_name }}"
       ansible.builtin.command:
         cmd: "pkill -9 -f -- {{ cal_role_process_identifier | quote }}"
@@ -77,8 +91,10 @@
       ansible.builtin.command: "{{ cal_role_service_script }} status"
       register: cal_role_final_status
       until: cal_role_stopped_check_string in cal_role_final_status.stdout
-      retries: 2
+      retries: "{{ cal_role_stop_kill_retries }}"
       delay: "{{ cal_role_retry_delay }}"
+      async: "{{ cal_role_script_timeout }}"
+      poll: 1
       changed_when: false
       failed_when: >
         (cal_role_stopped_check_string not in cal_role_final_status.stdout) or
@@ -89,3 +105,21 @@
     - name: "Process killed successfully for {{ cal_role_service_name }}"
       ansible.builtin.debug:
         msg: "{{ cal_role_service_name }} process killed successfully, service is now stopped"
+
+    - name: "Get current timestamp for force kill event"
+      ansible.builtin.command: date -u +"%Y-%m-%dT%H:%M:%SZ"
+      register: cal_role_kill_timestamp
+      changed_when: false
+      when: cal_role_kill_result.rc == 0
+
+    - name: "Record force kill event for reporting"
+      ansible.builtin.set_fact:
+        cal_role_force_kill_events: "{{ cal_role_force_kill_events | default([]) + [kill_event] }}"
+      vars:
+        kill_event:
+          hostname: "{{ inventory_hostname }}"
+          service_name: "{{ cal_role_service_name }}"
+          timestamp: "{{ cal_role_kill_timestamp.stdout }}"
+          process_identifier: "{{ cal_role_process_identifier }}"
+          ps_details: "{{ cal_role_pre_kill_ps.stdout }}"
+      when: cal_role_kill_result.rc == 0

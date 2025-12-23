@@ -23,6 +23,10 @@ cal_role_allow_force_kill: true
 # Timing configuration
 cal_role_post_kill_wait_seconds: 3
 cal_role_retry_delay: 3
+cal_role_start_retries: 3
+cal_role_stop_retries: 3
+cal_role_stop_kill_retries: 2
+cal_role_script_timeout: 300
 
 # Return code configuration (for scripts with non-standard RC behavior)
 cal_role_start_check_rc: true
@@ -34,3 +38,22 @@ cal_role_status_expect_zero_rc: true
 
 # Service operation to perform (start, stop, status)
 cal_role_service_action: "status"
+
+# File monitoring configuration (for wait_for_files_deleted task)
+cal_role_file_monitor_enabled: false
+cal_role_file_monitor_path: "/tmp"
+cal_role_file_monitor_patterns:
+  - "*.tmp"
+  - "*.lock"
+cal_role_file_monitor_timeout: 300
+cal_role_file_monitor_check_interval: 5
+cal_role_file_monitor_fail_on_timeout: true
+
+# Email notification configuration
+cal_role_email_enabled: true
+cal_role_email_smtp_host: "localhost"
+cal_role_email_smtp_port: 25
+cal_role_email_from: "ansible@{{ inventory_hostname }}"
+cal_role_email_to: "admin@example.com"
+cal_role_email_subject_prefix: "[Ansible Alert]"
+cal_role_email_secure: "never"

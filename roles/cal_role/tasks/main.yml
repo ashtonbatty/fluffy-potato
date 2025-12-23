@@ -14,6 +14,8 @@
   become: "{{ cal_role_service_become }}"
   become_user: "{{ cal_role_service_become_user }}"
   become_flags: "{{ cal_role_service_become_flags }}"
+  async: "{{ cal_role_script_timeout }}"
+  poll: 1
   failed_when: not cal_role_script_stat.stat.exists or not cal_role_script_stat.stat.executable
 
 - name: "Execute service action - {{ cal_role_service_action }}"

@@ -4,6 +4,8 @@
   register: cal_role_status_result
   failed_when: false
   changed_when: false
+  async: "{{ cal_role_script_timeout }}"
+  poll: 1
 
 - name: "Display service status for {{ cal_role_service_name }}"
   ansible.builtin.debug:

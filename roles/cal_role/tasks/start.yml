@@ -5,6 +5,8 @@
   register: cal_role_pre_start_check
   failed_when: false
   changed_when: false
+  async: "{{ cal_role_script_timeout }}"
+  poll: 1
 
 - name: "Service already running, skipping start for {{ cal_role_service_name }}"
   ansible.builtin.debug:
@@ -16,6 +18,8 @@
   register: cal_role_start_result
   when: cal_role_running_check_string not in cal_role_pre_start_check.stdout
   changed_when: cal_role_start_result.rc == 0
+  async: "{{ cal_role_script_timeout }}"
+  poll: 1
   failed_when: >
     (cal_role_start_check_string not in cal_role_start_result.stdout) or
     (cal_role_start_check_rc and
@@ -27,8 +31,10 @@
   register: cal_role_status_result
   when: cal_role_running_check_string not in cal_role_pre_start_check.stdout
   until: cal_role_running_check_string in cal_role_status_result.stdout
-  retries: 3
+  retries: "{{ cal_role_start_retries }}"
   delay: "{{ cal_role_retry_delay }}"
+  async: "{{ cal_role_script_timeout }}"
+  poll: 1
   changed_when: false
   failed_when: >
     (cal_role_running_check_string not in cal_role_status_result.stdout) or

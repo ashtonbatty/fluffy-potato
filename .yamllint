@@ -13,3 +13,6 @@ rules:
   document-start: disable
   truthy:
     allowed-values: ['true', 'false', 'yes', 'no']
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
