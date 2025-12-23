@@ -1,0 +1,17 @@
+---
+- name: "Check service status for {{ appname_service_name }}"
+  ansible.builtin.command: "{{ appname_service_script }} status"
+  register: appname_status_result
+  failed_when: false
+  changed_when: false
+  async: "{{ appname_script_timeout }}"
+  poll: 1
+
+- name: "Display service status for {{ appname_service_name }}"
+  ansible.builtin.debug:
+    msg:
+      - "Service: {{ appname_service_name }}"
+      - "Status output: {{ appname_status_result.stdout }}"
+      - "Return code: {{ appname_status_result.rc }}"
+      - "Running: {{ 'Yes' if appname_running_check_string in appname_status_result.stdout else 'No' }}"
+      - "Stopped: {{ 'Yes' if appname_stopped_check_string in appname_status_result.stdout else 'No' }}"

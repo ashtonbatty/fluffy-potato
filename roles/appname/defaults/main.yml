@@ -1,13 +1,9 @@
-## Configuration
-
-### Role Defaults
-
-All configurable options are in `roles/appname/defaults/main.yml`:
-
-```yaml
+---
 # Service configuration
 appname_service_name: "myservice"
 appname_service_script: "/scripts/{{ appname_service_name }}.sh"
+
+# Process identification for kill operation
 appname_process_identifier: "COMPONENT={{ appname_service_name }}"
 
 # Privilege escalation for service operations
@@ -33,29 +29,29 @@ appname_stop_kill_retries: 2
 appname_script_timeout: 300
 
 # Return code configuration
+# Set to expected return code (usually 0), or omit/set to null to skip RC checking
 appname_start_expected_rc: 0
-
 appname_stop_expected_rc: 0
-
 appname_status_expected_rc: 0
-
 
 # Service operation to perform (start, stop, status)
 appname_service_action: "status"
-```
 
-### Service-Specific Variables
+# File monitoring configuration (for wait_for_files_deleted task)
+appname_file_monitor_enabled: false
+appname_file_monitor_path: "/tmp"
+appname_file_monitor_patterns:
+  - "*.tmp"
+  - "*.lock"
+appname_file_monitor_timeout: 300
+appname_file_monitor_check_interval: 5
+appname_file_monitor_fail_on_timeout: true
 
-Override defaults in service var files (`vars/*.yml`):
-
-```yaml
-appname_service_name: "myservice"
-appname_service_script: "/opt/myapp/control.sh"
-appname_process_identifier: "java.*myservice"
-appname_retry_delay: 5
-
-# For scripts with backwards return codes
-appname_stop_expected_rc: 1  # Non-zero expected
-appname_status_expected_rc: 1  # Non-zero expected
-```
-
+# Email notification configuration
+appname_email_enabled: true
+appname_email_smtp_host: "localhost"
+appname_email_smtp_port: 25
+appname_email_from: "ansible@{{ inventory_hostname }}"
+appname_email_to: "admin@example.com"
+appname_email_subject_prefix: "[Ansible Alert]"
+appname_email_secure: "never"

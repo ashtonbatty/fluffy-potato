@@ -6,9 +6,9 @@
 #   ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=status
 #
 # This playbook routes to the appropriate workflow based on service_action:
-# - start: Routes to playbooks/cal_start.yml (forward order: foo -> bar -> elephant)
-# - stop: Routes to playbooks/cal_stop.yml (reverse order: elephant -> bar -> foo)
-# - status: Routes to playbooks/cal_status.yml (forward order with workflow reporting)
+# - start: Routes to playbooks/appname_start.yml (forward order: foo -> bar -> elephant)
+# - stop: Routes to playbooks/appname_stop.yml (reverse order: elephant -> bar -> foo)
+# - status: Routes to playbooks/appname_status.yml (forward order with workflow reporting)
 
 - name: "Validate service action"
   hosts: localhost
@@ -24,13 +24,13 @@
         success_msg: "Service action validated: {{ service_action }}"
 
 - name: "Route to start workflow"
-  ansible.builtin.import_playbook: playbooks/cal_start.yml
+  ansible.builtin.import_playbook: playbooks/appname_start.yml
   when: service_action == 'start'
 
 - name: "Route to stop workflow"
-  ansible.builtin.import_playbook: playbooks/cal_stop.yml
+  ansible.builtin.import_playbook: playbooks/appname_stop.yml
   when: service_action == 'stop'
 
 - name: "Route to status workflow"
-  ansible.builtin.import_playbook: playbooks/cal_status.yml
+  ansible.builtin.import_playbook: playbooks/appname_status.yml
   when: service_action == 'status'

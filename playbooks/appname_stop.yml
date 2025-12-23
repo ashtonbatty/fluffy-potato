@@ -27,7 +27,7 @@
   vars_files:
     - ../vars/elephant.yml
   vars:
-    cal_service_action: "stop"
+    appname_service_action: "stop"
   tasks:
     - name: "Record task start time for elephant service"
       ansible.builtin.set_fact:
@@ -38,7 +38,7 @@
 
     - name: "Execute elephant service stop"
       block:
-        - name: "Include cal_role for elephant"
+        - name: "Include appname_role for elephant"
           ansible.builtin.include_role:
             name: cal
 
@@ -86,7 +86,7 @@
   vars_files:
     - ../vars/bar.yml
   vars:
-    cal_service_action: "stop"
+    appname_service_action: "stop"
   tasks:
     - name: "Skip if previous task failed"
       ansible.builtin.meta: end_play
@@ -101,7 +101,7 @@
 
     - name: "Execute bar service stop"
       block:
-        - name: "Include cal_role for bar"
+        - name: "Include appname_role for bar"
           ansible.builtin.include_role:
             name: cal
 
@@ -209,7 +209,7 @@
   vars_files:
     - ../vars/foo.yml
   vars:
-    cal_service_action: "stop"
+    appname_service_action: "stop"
   tasks:
     - name: "Skip if previous task failed"
       ansible.builtin.meta: end_play
@@ -224,7 +224,7 @@
 
     - name: "Execute foo service stop"
       block:
-        - name: "Include cal_role for foo"
+        - name: "Include appname_role for foo"
           ansible.builtin.include_role:
             name: cal
 

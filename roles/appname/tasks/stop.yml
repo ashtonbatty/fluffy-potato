@@ -1,0 +1,119 @@
+---
+# Idempotency pre-check
+- name: "Check if service is already stopped for {{ appname_service_name }}"
+  ansible.builtin.command: "{{ appname_service_script }} status"
+  register: appname_pre_stop_check
+  failed_when: false
+  changed_when: false
+  async: "{{ appname_script_timeout }}"
+  poll: 1
+
+- name: "Service already stopped, skipping stop for {{ appname_service_name }}"
+  ansible.builtin.debug:
+    msg: "{{ appname_service_name }} is already stopped, skipping"
+  when: appname_stopped_check_string in appname_pre_stop_check.stdout
+
+- name: "Stop service with block-rescue pattern for {{ appname_service_name }}"
+  when: appname_stopped_check_string not in appname_pre_stop_check.stdout
+  block:
+    - name: "Stop service for {{ appname_service_name }}"
+      ansible.builtin.command: "{{ appname_service_script }} stop"
+      register: appname_stop_result
+      changed_when: appname_stop_result.rc == 0
+      async: "{{ appname_script_timeout }}"
+      poll: 1
+      failed_when: >
+        (appname_stop_check_string not in appname_stop_result.stdout) or
+        (appname_stop_expected_rc is defined and appname_stop_result.rc != appname_stop_expected_rc)
+
+    - name: "Verify service has stopped for {{ appname_service_name }}"
+      ansible.builtin.command: "{{ appname_service_script }} status"
+      register: appname_status_result
+      until: appname_stopped_check_string in appname_status_result.stdout
+      retries: "{{ appname_stop_retries }}"
+      delay: "{{ appname_retry_delay }}"
+      async: "{{ appname_script_timeout }}"
+      poll: 1
+      changed_when: false
+      failed_when: >
+        (appname_stopped_check_string not in appname_status_result.stdout) or
+        (appname_status_expected_rc is defined and appname_status_result.rc != appname_status_expected_rc)
+
+    - name: "Service stopped successfully for {{ appname_service_name }}"
+      ansible.builtin.debug:
+        msg: "{{ appname_service_name }} stopped successfully"
+
+  rescue:
+    - name: "Validate force kill is allowed for {{ appname_service_name }}"
+      ansible.builtin.assert:
+        that:
+          - appname_allow_force_kill | bool
+        fail_msg: "Service {{ appname_service_name }} failed to stop gracefully, but force kill is disabled (appname_allow_force_kill=false)"
+        success_msg: "Force kill is allowed, proceeding with pkill"
+
+    - name: "Validate process identifier is safe for {{ appname_service_name }}"
+      ansible.builtin.assert:
+        that:
+          - appname_process_identifier is defined
+          - appname_process_identifier | length > 0
+          - appname_process_identifier | length >= 5
+        fail_msg: "appname_process_identifier is too short or empty (must be >= 5 chars): '{{ appname_process_identifier | default('') }}'"
+        success_msg: "Process identifier is sufficiently specific: {{ appname_process_identifier }}"
+
+    - name: "Service did not stop gracefully, killing process for {{ appname_service_name }}"
+      ansible.builtin.debug:
+        msg: "{{ appname_service_name }} failed to stop gracefully, attempting to kill process with identifier: {{ appname_process_identifier }}"
+
+    - name: "Capture process details before force kill for {{ appname_service_name }}"
+      ansible.builtin.shell: |
+        set -o pipefail
+        ps aux | grep -F "{{ appname_process_identifier }}" | grep -v grep || true
+      register: appname_pre_kill_ps
+      changed_when: false
+      failed_when: false
+
+    - name: "Kill process by identifier for {{ appname_service_name }}"
+      ansible.builtin.command:
+        cmd: "pkill -9 -f -- {{ appname_process_identifier | quote }}"
+      register: appname_kill_result
+      changed_when: appname_kill_result.rc == 0
+      failed_when: appname_kill_result.rc not in [0, 1]
+
+    - name: "Wait after kill seconds - {{ appname_post_kill_wait_seconds }}"
+      ansible.builtin.pause:
+        seconds: "{{ appname_post_kill_wait_seconds }}"
+
+    - name: "Verify process is dead for {{ appname_service_name }}"
+      ansible.builtin.command: "{{ appname_service_script }} status"
+      register: appname_final_status
+      until: appname_stopped_check_string in appname_final_status.stdout
+      retries: "{{ appname_stop_kill_retries }}"
+      delay: "{{ appname_retry_delay }}"
+      async: "{{ appname_script_timeout }}"
+      poll: 1
+      changed_when: false
+      failed_when: >
+        (appname_stopped_check_string not in appname_final_status.stdout) or
+        (appname_status_expected_rc is defined and appname_final_status.rc != appname_status_expected_rc)
+
+    - name: "Process killed successfully for {{ appname_service_name }}"
+      ansible.builtin.debug:
+        msg: "{{ appname_service_name }} process killed successfully, service is now stopped"
+
+    - name: "Get current timestamp for force kill event"
+      ansible.builtin.command: date -u +"%Y-%m-%dT%H:%M:%SZ"
+      register: appname_kill_timestamp
+      changed_when: false
+      when: appname_kill_result.rc == 0
+
+    - name: "Record force kill event for reporting"
+      ansible.builtin.set_fact:
+        appname_force_kill_events: "{{ appname_force_kill_events | default([]) + [kill_event] }}"
+      vars:
+        kill_event:
+          hostname: "{{ inventory_hostname }}"
+          service_name: "{{ appname_service_name }}"
+          timestamp: "{{ appname_kill_timestamp.stdout }}"
+          process_identifier: "{{ appname_process_identifier }}"
+          ps_details: "{{ appname_pre_kill_ps.stdout }}"
+      when: appname_kill_result.rc == 0

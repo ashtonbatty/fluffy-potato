@@ -1,0 +1,44 @@
+---
+# Idempotency pre-check
+- name: "Check if service is already running for {{ appname_service_name }}"
+  ansible.builtin.command: "{{ appname_service_script }} status"
+  register: appname_pre_start_check
+  failed_when: false
+  changed_when: false
+  async: "{{ appname_script_timeout }}"
+  poll: 1
+
+- name: "Service already running, skipping start for {{ appname_service_name }}"
+  ansible.builtin.debug:
+    msg: "{{ appname_service_name }} is already running, skipping"
+  when: appname_running_check_string in appname_pre_start_check.stdout
+
+- name: "Start service for {{ appname_service_name }}"
+  ansible.builtin.command: "{{ appname_service_script }} start"
+  register: appname_start_result
+  when: appname_running_check_string not in appname_pre_start_check.stdout
+  changed_when: appname_start_result.rc == 0
+  async: "{{ appname_script_timeout }}"
+  poll: 1
+  failed_when: >
+    (appname_start_check_string not in appname_start_result.stdout) or
+    (appname_start_expected_rc is defined and appname_start_result.rc != appname_start_expected_rc)
+
+- name: "Verify service is running for {{ appname_service_name }}"
+  ansible.builtin.command: "{{ appname_service_script }} status"
+  register: appname_status_result
+  when: appname_running_check_string not in appname_pre_start_check.stdout
+  until: appname_running_check_string in appname_status_result.stdout
+  retries: "{{ appname_start_retries }}"
+  delay: "{{ appname_retry_delay }}"
+  async: "{{ appname_script_timeout }}"
+  poll: 1
+  changed_when: false
+  failed_when: >
+    (appname_running_check_string not in appname_status_result.stdout) or
+    (appname_status_expected_rc is defined and appname_status_result.rc != appname_status_expected_rc)
+
+- name: "Service started successfully for {{ appname_service_name }}"
+  ansible.builtin.debug:
+    msg: "{{ appname_service_name }} started successfully and is running"
+  when: appname_running_check_string not in appname_pre_start_check.stdout

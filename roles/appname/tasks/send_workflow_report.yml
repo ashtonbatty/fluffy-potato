@@ -4,30 +4,30 @@
 
 - name: "Gather force kill events from all hosts"
   ansible.builtin.set_fact:
-    cal_all_force_kill_events: >-
+    appname_all_force_kill_events: >-
       {{ ansible_play_hosts_all |
-         map('extract', hostvars, 'cal_force_kill_events') |
+         map('extract', hostvars, 'appname_force_kill_events') |
          select('defined') | flatten | list }}
   run_once: true  # noqa: run-once
 
 - name: "Gather file monitoring events from all hosts"
   ansible.builtin.set_fact:
-    cal_all_file_monitor_events: >-
+    appname_all_file_monitor_events: >-
       {{ ansible_play_hosts_all |
-         map('extract', hostvars, 'cal_file_monitor_events') |
+         map('extract', hostvars, 'appname_file_monitor_events') |
          select('defined') | flatten | list }}
   run_once: true  # noqa: run-once
 
 - name: "Calculate workflow duration"
   ansible.builtin.set_fact:
-    cal_workflow_duration: >-
+    appname_workflow_duration: >-
       {{ ((workflow_metadata.workflow_end_time | to_datetime('%Y-%m-%dT%H:%M:%SZ')) -
           (workflow_metadata.workflow_start_time | to_datetime('%Y-%m-%dT%H:%M:%SZ'))).total_seconds() | int }}
   run_once: true  # noqa: run-once
 
 - name: "Determine email subject based on workflow status"
   ansible.builtin.set_fact:
-    cal_email_subject: >-
+    appname_email_subject: >-
       {{ '[SUCCESS]' if workflow_metadata.workflow_status == 'success' else '[FAILURE]' }}
       {{ workflow_metadata.workflow_type | upper }} workflow completed -
       {{ workflow_metadata.ansible_control_node }}
@@ -35,7 +35,7 @@
 
 - name: "Build comprehensive workflow report"
   ansible.builtin.set_fact:
-    cal_workflow_report: |
+    appname_workflow_report: |
       {% if workflow_metadata.workflow_status != 'success' %}
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !!! WORKFLOW FAILED - SEE FAILURE DETAILS BELOW
@@ -50,7 +50,7 @@
       Workflow Type: {{ workflow_metadata.workflow_type }}
       Started: {{ workflow_metadata.workflow_start_time }}
       Completed: {{ workflow_metadata.workflow_end_time }}
-      Duration: {{ cal_workflow_duration }} seconds ({{ (cal_workflow_duration / 60) | round(2) }} minutes)
+      Duration: {{ appname_workflow_duration }} seconds ({{ (appname_workflow_duration / 60) | round(2) }} minutes)
 
       Initiated By: {{ workflow_metadata.workflow_user }}
       Ansible Control Node: {{ workflow_metadata.ansible_control_node }}
@@ -92,12 +92,12 @@
 
       {% endfor %}
 
-      {% if cal_all_force_kill_events | default([]) | length > 0 %}
+      {% if appname_all_force_kill_events | default([]) | length > 0 %}
       ================================================================================
-      FORCE KILL EVENTS ({{ cal_all_force_kill_events | length }})
+      FORCE KILL EVENTS ({{ appname_all_force_kill_events | length }})
       ================================================================================
 
-      {% for event in cal_all_force_kill_events %}
+      {% for event in appname_all_force_kill_events %}
       Hostname: {{ event.hostname }}
       Service: {{ event.service_name }}
       Timestamp: {{ event.timestamp }}
@@ -109,12 +109,12 @@
       {% endfor %}
       {% endif %}
 
-      {% if cal_all_file_monitor_events | default([]) | length > 0 %}
+      {% if appname_all_file_monitor_events | default([]) | length > 0 %}
       ================================================================================
-      FILE MONITORING EVENTS ({{ cal_all_file_monitor_events | length }})
+      FILE MONITORING EVENTS ({{ appname_all_file_monitor_events | length }})
       ================================================================================
 
-      {% for event in cal_all_file_monitor_events %}
+      {% for event in appname_all_file_monitor_events %}
       Hostname: {{ event.hostname }}
       Directory: {{ event.directory }}
       Timeout: {{ event.timeout }} seconds
@@ -141,8 +141,8 @@
       Total Tasks: {{ workflow_tasks | length }}
       Successful Tasks: {{ workflow_tasks | selectattr('status', 'equalto', 'success') | list | length }}
       Failed Tasks: {{ workflow_tasks | rejectattr('status', 'equalto', 'success') | list | length }}
-      Force Kills: {{ cal_all_force_kill_events | default([]) | length }}
-      File Monitoring Issues: {{ cal_all_file_monitor_events | default([]) | length }}
+      Force Kills: {{ appname_all_force_kill_events | default([]) | length }}
+      File Monitoring Issues: {{ appname_all_file_monitor_events | default([]) | length }}
 
       ================================================================================
       END OF REPORT
@@ -151,17 +151,17 @@
 
 - name: "Send workflow report email"
   community.general.mail:
-    host: "{{ cal_email_smtp_host }}"
-    port: "{{ cal_email_smtp_port }}"
-    from: "{{ cal_email_from }}"
-    to: "{{ cal_email_to }}"
-    subject: "{{ cal_email_subject_prefix }} {{ cal_email_subject }}"
-    body: "{{ cal_workflow_report }}"
-    secure: "{{ cal_email_secure }}"
+    host: "{{ appname_email_smtp_host }}"
+    port: "{{ appname_email_smtp_port }}"
+    from: "{{ appname_email_from }}"
+    to: "{{ appname_email_to }}"
+    subject: "{{ appname_email_subject_prefix }} {{ appname_email_subject }}"
+    body: "{{ appname_workflow_report }}"
+    secure: "{{ appname_email_secure }}"
   run_once: true  # noqa: run-once
-  when: cal_email_enabled | default(true)
+  when: appname_email_enabled | default(true)
 
 - name: "Display workflow report"
   ansible.builtin.debug:
-    msg: "{{ cal_workflow_report }}"
+    msg: "{{ appname_workflow_report }}"
   run_once: true  # noqa: run-once

@@ -54,33 +54,33 @@ During service stop operations, you can configure the framework to wait for spec
 **How It Works:**
 
 1. After stopping the first service (foo), the file monitor checks the configured directory
-2. It waits up to `cal_file_monitor_timeout` seconds for matching files to be deleted
+2. It waits up to `appname_file_monitor_timeout` seconds for matching files to be deleted
 3. If files remain after timeout, it gathers hostname, filenames, and file stats (size, timestamp, owner, permissions)
 4. Event is recorded and added to the consolidated report (sent at end of workflow)
-5. Optionally fails the playbook (controlled by `cal_file_monitor_fail_on_timeout`)
+5. Optionally fails the playbook (controlled by `appname_file_monitor_fail_on_timeout`)
 
 ### Configuration Example
 
 ```yaml
 # Enable file monitoring for cleanup between foo and bar services
-cal_file_monitor_enabled: true
-cal_file_monitor_path: "/var/app/temp"
-cal_file_monitor_patterns:
+appname_file_monitor_enabled: true
+appname_file_monitor_path: "/var/app/temp"
+appname_file_monitor_patterns:
   - "*.tmp"
   - "*.lock"
   - "*.pid"
-cal_file_monitor_timeout: 120
-cal_file_monitor_check_interval: 5
-cal_file_monitor_fail_on_timeout: false
+appname_file_monitor_timeout: 120
+appname_file_monitor_check_interval: 5
+appname_file_monitor_fail_on_timeout: false
 
 # Email configuration
-cal_email_enabled: true
-cal_email_smtp_host: "mail.example.com"
-cal_email_smtp_port: 587
-cal_email_from: "ansible@myserver.com"
-cal_email_to: "ops-team@example.com"
-cal_email_subject_prefix: "[Production Alert]"
-cal_email_secure: "starttls"
+appname_email_enabled: true
+appname_email_smtp_host: "mail.example.com"
+appname_email_smtp_port: 587
+appname_email_from: "ansible@myserver.com"
+appname_email_to: "ops-team@example.com"
+appname_email_subject_prefix: "[Production Alert]"
+appname_email_secure: "starttls"
 ```
 
 ### Email Report Format
@@ -209,6 +209,6 @@ To skip file monitoring (enabled by default in production), disable it:
 ```bash
 ansible-playbook -i inventory/hosts orchestrate.yml \
   -e service_action=stop \
-  -e cal_file_monitor_enabled=false
+  -e appname_file_monitor_enabled=false
 ```
 

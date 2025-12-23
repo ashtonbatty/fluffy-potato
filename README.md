@@ -37,12 +37,12 @@ host3.example.com
 
 ### 2. Configure Services
 
-Each service has a vars file in `vars/` with `cal_` prefixed variables. Example `vars/foo.yml`:
+Each service has a vars file in `vars/` with `appname_` prefixed variables. Example `vars/foo.yml`:
 
 ```yaml
-cal_service_name: "foo"
-cal_service_script: "/scripts/foo.sh"
-cal_process_identifier: "COMPONENT=foo"
+appname_service_name: "foo"
+appname_service_script: "/scripts/foo.sh"
+appname_process_identifier: "COMPONENT=foo"
 inventory_group: "foo_servers"
 ```
 
@@ -63,22 +63,44 @@ ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=stop
 ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=status
 ```
 
+## Adapting for Your Application
+
+This framework is designed to be easily adapted for different applications. Use the included `rename_role.sh` script to rename the role and all variable prefixes:
+
+```bash
+# Rename role from "appname" to your application name
+./rename_role.sh appname myapp
+```
+
+**What it does**:
+- Renames `roles/appname/` to `roles/myapp/`
+- Updates all `appname_` variable prefixes to `myapp_`
+- Renames workflow playbooks (`appname_*.yml` to `myapp_*.yml`)
+- Updates all role references in playbooks and documentation
+
+**After renaming**:
+1. Review changes: `git diff`
+2. Test playbooks: `ansible-playbook --syntax-check orchestrate.yml`
+3. Run linter: `ansible-lint`
+4. Commit: `git add -A && git commit -m "Rename role to myapp"`
+
 ## Directory Structure
 
 ```
 ansible-cal/
 ├── orchestrate.yml                    # Router playbook
+├── rename_role.sh                     # Script to rename role for different applications
 ├── playbooks/
-│   ├── cal_start.yml                  # Start workflow
-│   ├── cal_stop.yml                   # Stop workflow
-│   └── cal_status.yml                 # Status workflow
+│   ├── appname_start.yml                  # Start workflow
+│   ├── appname_stop.yml                   # Stop workflow
+│   └── appname_status.yml                 # Status workflow
 ├── inventory/hosts                    # Inventory with service groups
 ├── vars/
 │   ├── services.yml                   # Central services registry
 │   ├── foo.yml                        # Service configurations
 │   ├── bar.yml
 │   └── elephant.yml
-├── roles/cal/
+├── roles/appname/
 │   ├── defaults/main.yml              # Default variables
 │   ├── meta/main.yml                  # Role metadata
 │   └── tasks/
@@ -131,7 +153,7 @@ MIT License - See [LICENSE](LICENSE) file for details.
 When adding new services or features:
 1. Maintain the DRY principle
 2. Keep service-specific config in vars files
-3. Use `cal_` prefix for all role variables
+3. Use `appname_` prefix for all role variables
 4. Update documentation with new features
 5. Run `ansible-lint` to ensure code quality
 6. Test thoroughly before deploying to production

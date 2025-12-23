@@ -1,6 +1,6 @@
 ---
-# Status workflow - check status of all services in order: foo -> bar -> elephant
-# This playbook is called by orchestrate.yml for status operations
+# Start workflow - services start in forward order: foo -> bar -> elephant
+# This playbook is called by orchestrate.yml for start operations
 
 - name: "Initialize workflow tracking"
   hosts: localhost
@@ -10,7 +10,7 @@
     - name: "Record workflow start metadata"
       ansible.builtin.set_fact:
         workflow_metadata:
-          workflow_type: "status"
+          workflow_type: "start"
           workflow_start_time: "{{ ansible_date_time.iso8601 }}"
           workflow_user: "{{ lookup('env', 'USER') | default(ansible_user_id | default('unknown')) }}"
           ansible_control_node: "{{ ansible_hostname }}"
@@ -20,14 +20,14 @@
       delegate_facts: true
       run_once: true  # noqa: run-once
 
-- name: "Foo service - Status"
+- name: "Foo service - Start"
   hosts: foo_servers
   gather_facts: false
   any_errors_fatal: false
   vars_files:
     - ../vars/foo.yml
   vars:
-    cal_service_action: "status"
+    appname_service_action: "start"
   tasks:
     - name: "Record task start time for foo service"
       ansible.builtin.set_fact:
@@ -36,11 +36,12 @@
       delegate_facts: true
       run_once: true  # noqa: run-once
 
-    - name: "Execute foo service status check"
+    - name: "Execute foo service start"
       block:
-        - name: "Include cal_role for foo"
+        - name: "Include appname_role for foo"
           ansible.builtin.include_role:
             name: cal
+          register: foo_result
 
         - name: "Record successful task completion for foo service"
           ansible.builtin.set_fact:
@@ -48,7 +49,7 @@
           vars:
             task_record:
               service: "foo"
-              action: "status"
+              action: "start"
               start_time: "{{ hostvars['localhost']['task_start_time'] }}"
               end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
               status: "success"
@@ -64,13 +65,13 @@
           vars:
             task_record:
               service: "foo"
-              action: "status"
+              action: "start"
               start_time: "{{ hostvars['localhost']['task_start_time'] }}"
               end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
               status: "failed"
               error: "{{ ansible_failed_result.msg | default('Unknown error') }}"
             failure_info:
-              failed_task: "foo service status"
+              failed_task: "foo service start"
               failed_service: "foo"
               failure_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
               error_message: "{{ ansible_failed_result.msg | default('Unknown error') }}"
@@ -79,14 +80,14 @@
           delegate_facts: true
           run_once: true  # noqa: run-once
 
-- name: "Bar service - Status"
+- name: "Bar service - Start"
   hosts: bar_servers
   gather_facts: false
   any_errors_fatal: false
   vars_files:
     - ../vars/bar.yml
   vars:
-    cal_service_action: "status"
+    appname_service_action: "start"
   tasks:
     - name: "Skip if previous task failed"
       ansible.builtin.meta: end_play
@@ -99,9 +100,9 @@
       delegate_facts: true
       run_once: true  # noqa: run-once
 
-    - name: "Execute bar service status check"
+    - name: "Execute bar service start"
       block:
-        - name: "Include cal_role for bar"
+        - name: "Include appname_role for bar"
           ansible.builtin.include_role:
             name: cal
 
@@ -111,7 +112,7 @@
           vars:
             task_record:
               service: "bar"
-              action: "status"
+              action: "start"
               start_time: "{{ hostvars['localhost']['task_start_time'] }}"
               end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
               status: "success"
@@ -127,13 +128,13 @@
           vars:
             task_record:
               service: "bar"
-              action: "status"
+              action: "start"
               start_time: "{{ hostvars['localhost']['task_start_time'] }}"
               end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
               status: "failed"
               error: "{{ ansible_failed_result.msg | default('Unknown error') }}"
             failure_info:
-              failed_task: "bar service status"
+              failed_task: "bar service start"
               failed_service: "bar"
               failure_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
               error_message: "{{ ansible_failed_result.msg | default('Unknown error') }}"
@@ -142,14 +143,14 @@
           delegate_facts: true
           run_once: true  # noqa: run-once
 
-- name: "Elephant service - Status"
+- name: "Elephant service - Start"
   hosts: elephant_servers
   gather_facts: false
   any_errors_fatal: false
   vars_files:
     - ../vars/elephant.yml
   vars:
-    cal_service_action: "status"
+    appname_service_action: "start"
   tasks:
     - name: "Skip if previous task failed"
       ansible.builtin.meta: end_play
@@ -162,9 +163,9 @@
       delegate_facts: true
       run_once: true  # noqa: run-once
 
-    - name: "Execute elephant service status check"
+    - name: "Execute elephant service start"
       block:
-        - name: "Include cal_role for elephant"
+        - name: "Include appname_role for elephant"
           ansible.builtin.include_role:
             name: cal
 
@@ -174,7 +175,7 @@
           vars:
             task_record:
               service: "elephant"
-              action: "status"
+              action: "start"
               start_time: "{{ hostvars['localhost']['task_start_time'] }}"
               end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
               status: "success"
@@ -190,13 +191,13 @@
           vars:
             task_record:
               service: "elephant"
-              action: "status"
+              action: "start"
               start_time: "{{ hostvars['localhost']['task_start_time'] }}"
               end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
               status: "failed"
               error: "{{ ansible_failed_result.msg | default('Unknown error') }}"
             failure_info:
-              failed_task: "elephant service status"
+              failed_task: "elephant service start"
               failed_service: "elephant"
               failure_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
               error_message: "{{ ansible_failed_result.msg | default('Unknown error') }}"
@@ -225,5 +226,5 @@
 
     - name: "Fail playbook if workflow failed"
       ansible.builtin.fail:
-        msg: "Status workflow failed - see email report for details"
+        msg: "Start workflow failed - see email report for details"
       when: workflow_metadata.workflow_status == 'failed'

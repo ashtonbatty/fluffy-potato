@@ -8,22 +8,22 @@ Check the stop check string matches your script output:
 # Should output something containing "stopping"
 ```
 
-Adjust `cal_stop_check_string` in vars file if needed.
+Adjust `appname_stop_check_string` in vars file if needed.
 
 ### Return code validation failing
 
 Your script may have non-standard return codes. Either:
-- Disable RC checking: `# cal_stop_expected_rc not set (skip RC check)`
-- Invert RC logic: `cal_stop_expected_rc: 1  # Non-zero expected`
+- Disable RC checking: `# appname_stop_expected_rc not set (skip RC check)`
+- Invert RC logic: `appname_stop_expected_rc: 1  # Non-zero expected`
 
 ### Process kill not working
 
-Verify `cal_process_identifier` matches your running process:
+Verify `appname_process_identifier` matches your running process:
 ```bash
 ps aux | grep "COMPONENT=foo"
 ```
 
-Adjust `cal_process_identifier` in vars file if needed.
+Adjust `appname_process_identifier` in vars file if needed.
 
 **IMPORTANT - Test Process Kill Patterns Before Production:**
 
@@ -49,13 +49,13 @@ If your pattern is too broad, you risk killing unrelated processes. Use specific
 - ❌ Bad: `"foo"` (too short, too generic)
 - ❌ Bad: `"python"` (would kill ALL Python processes)
 
-Consider testing in a non-production environment first, or disable force kill initially with `cal_allow_force_kill: false` until patterns are validated.
+Consider testing in a non-production environment first, or disable force kill initially with `appname_allow_force_kill: false` until patterns are validated.
 
 ### Force kill is disabled
 
 If you see an assertion failure about force kill being disabled:
 - Either fix the service script so it stops gracefully
-- Or explicitly enable force kill: `cal_allow_force_kill: true`
+- Or explicitly enable force kill: `appname_allow_force_kill: true`
 
 ### Process identifier too short
 

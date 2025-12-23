@@ -62,8 +62,8 @@ Always specify when behavior isn't obvious:
 
 ```yaml
 # Good
-cal_role_service_name: "myservice"
-cal_role_retry_delay: 3
+appname_role_service_name: "myservice"
+appname_role_retry_delay: 3
 
 # Bad
 service: "myservice"  # Too generic

@@ -1,5 +1,5 @@
 ---
-cal_service_name: "foo"
-cal_service_script: "/scripts/foo.sh"
-cal_process_identifier: "COMPONENT=foo"
+appname_service_name: "foo"
+appname_service_script: "/scripts/foo.sh"
+appname_process_identifier: "COMPONENT=foo"
 inventory_group: "foo_servers"
