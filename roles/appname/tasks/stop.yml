@@ -1,5 +1,10 @@
 ---
-# Idempotency pre-check
+# ========================================
+# IDEMPOTENCY PRE-CHECK
+# ========================================
+# Check if service is already stopped to avoid unnecessary operations
+# If service is already stopped, skip the stop operation entirely
+
 - name: "Check if service is already stopped for {{ appname_service_name }}"
   ansible.builtin.command: "{{ appname_service_script }} status"
   register: appname_pre_stop_check
@@ -10,6 +15,13 @@
   ansible.builtin.debug:
     msg: "{{ appname_service_name }} is already stopped, skipping"
   when: appname_stopped_check_string in appname_pre_stop_check.stdout
+
+# ========================================
+# GRACEFUL STOP WITH FORCE-KILL FALLBACK
+# ========================================
+# Attempt graceful shutdown first using block-rescue pattern
+# Block: Execute stop script and verify shutdown
+# Rescue: If graceful stop fails, validate and execute force-kill
 
 - name: "Stop service with block-rescue pattern for {{ appname_service_name }}"
   when: appname_stopped_check_string not in appname_pre_stop_check.stdout
@@ -38,6 +50,13 @@
         msg: "{{ appname_service_name }} stopped successfully"
 
   rescue:
+    # ========================================
+    # FORCE KILL VALIDATION
+    # ========================================
+    # Before attempting force kill, validate:
+    # 1. Force kill is explicitly enabled (appname_allow_force_kill)
+    # 2. Process identifier is sufficiently specific (>= 5 chars)
+
     - name: "Validate force kill is allowed for {{ appname_service_name }}"
       ansible.builtin.assert:
         that:
@@ -53,6 +72,13 @@
           - appname_process_identifier | length >= 5
         fail_msg: "appname_process_identifier is too short or empty (must be >= 5 chars): '{{ appname_process_identifier | default('') }}'"
         success_msg: "Process identifier is sufficiently specific: {{ appname_process_identifier }}"
+
+    # ========================================
+    # FORCE KILL EXECUTION
+    # ========================================
+    # Execute pkill to forcefully terminate the service process
+    # Capture process details before kill for reporting
+    # Wait for process cleanup and verify shutdown
 
     - name: "Service did not stop gracefully, killing process for {{ appname_service_name }}"
       ansible.builtin.debug:
@@ -92,10 +118,15 @@
       ansible.builtin.debug:
         msg: "{{ appname_service_name }} process killed successfully, service is now stopped"
 
+    # ========================================
+    # FORCE KILL EVENT RECORDING
+    # ========================================
+    # Record force-kill event with timestamp and process details
+    # This information is included in the workflow email report
+
     - name: "Get current timestamp for force kill event"
-      ansible.builtin.command: date -u +"%Y-%m-%dT%H:%M:%SZ"
-      register: appname_kill_timestamp
-      changed_when: false
+      ansible.builtin.set_fact:
+        appname_kill_timestamp_value: "{{ ansible_date_time.iso8601 }}"
       when: appname_kill_result.rc == 0
 
     - name: "Record force kill event for reporting"
@@ -105,7 +136,7 @@
         kill_event:
           hostname: "{{ inventory_hostname }}"
           service_name: "{{ appname_service_name }}"
-          timestamp: "{{ appname_kill_timestamp.stdout }}"
+          timestamp: "{{ appname_kill_timestamp_value }}"
           process_identifier: "{{ appname_process_identifier }}"
           ps_details: "{{ appname_pre_kill_ps.stdout }}"
       when: appname_kill_result.rc == 0

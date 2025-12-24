@@ -59,25 +59,29 @@ Before any operation, the role validates:
    host5.example.com
    ```
 
-3. **Add play to orchestrate.yml**:
+3. **Add play to all three workflow playbooks**:
+   - Add to `playbooks/appname_start.yml` in appropriate order
+   - Add to `playbooks/appname_stop.yml` in reverse order
+   - Add to `playbooks/appname_status.yml` in same order as start
+
+   Example play structure:
    ```yaml
-   - name: "Newservice service - {{ service_action | default('status') | capitalize }}"
+   - name: "Newservice service - Start"
      hosts: newservice_servers
      gather_facts: false
+     any_errors_fatal: false
      vars_files:
-       - vars/newservice.yml
+       - ../vars/newservice.yml
      vars:
-       appname_service_action: "{{ service_action | default('status') }}"
-     roles:
-       - appname
-   ```
-
-4. **Update services registry** (`vars/services.yml`) for documentation:
-   ```yaml
-   newservice:
-     group: newservice_servers
-     vars_file: vars/newservice.yml
-     order: 4
+       appname_service_action: "start"
+       service_item:
+         name: newservice
+     tasks:
+       - name: "Execute service operation with workflow tracking"
+         ansible.builtin.include_tasks:
+           file: ../roles/appname/tasks/execute_service_with_tracking.yml
+         vars:
+           service_action: "start"
    ```
 
 ## Configuration Variables Reference

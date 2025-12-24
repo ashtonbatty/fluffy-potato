@@ -1,15 +1,45 @@
 ---
-# Reusable task for executing service operations with workflow tracking
+# ========================================
+# SERVICE EXECUTION WITH WORKFLOW TRACKING
+# ========================================
+# Reusable task for executing service operations with comprehensive workflow tracking
+#
+# This task implements the workflow tracking pattern used across all service operations:
+# 1. Record task start time on localhost (delegated fact)
+# 2. Execute service operation via appname role
+# 3. Record success/failure in workflow_tasks array
+# 4. Update workflow_metadata status on failure
+# 5. Re-raise failures for proper error propagation
+#
 # Required variables:
-#   - service_item: dict with 'name', 'host_group', 'vars_file'
+#   - service_item: dict with 'name' key
 #   - service_action: action to perform (start/stop/status)
+#
+# Workflow tracking variables (maintained on localhost):
+#   - workflow_tasks: Array of task execution records (service, action, times, status)
+#   - workflow_metadata: Dict with workflow status and failure details
+#
+# Why facts are delegated to localhost:
+#   - Workflow state must be shared across all plays/hosts
+#   - Localhost serves as centralized tracking coordinator
+#   - run_once ensures facts are set only once per service operation
+
+# ========================================
+# RECORD TASK START TIME
+# ========================================
 
 - name: "Record task start time (Service: {{ service_item.name }})"
   ansible.builtin.set_fact:
-    task_start_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
+    task_start_time: "{{ ansible_date_time.iso8601 }}"
   delegate_to: localhost
   delegate_facts: true
-  run_once: true  # noqa: run-once
+  run_once: true
+
+# ========================================
+# EXECUTE SERVICE OPERATION
+# ========================================
+# Execute the requested service operation (start/stop/status)
+# Track success or failure for workflow reporting
 
 - name: "Execute service operation (Service: {{ service_item.name }}, Action: {{ service_action }})"
   block:
@@ -25,13 +55,19 @@
           service: "{{ service_item.name }}"
           action: "{{ service_action }}"
           start_time: "{{ hostvars['localhost']['task_start_time'] }}"
-          end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
+          end_time: "{{ ansible_date_time.iso8601 }}"
           status: "success"
       delegate_to: localhost
       delegate_facts: true
-      run_once: true  # noqa: run-once
+      run_once: true
 
   rescue:
+    # ========================================
+    # FAILURE HANDLING
+    # ========================================
+    # Record failure details and update workflow status
+    # Then re-raise the failure to stop workflow execution
+
     - name: "Record failed task (Service: {{ service_item.name }})"
       ansible.builtin.set_fact:
         workflow_tasks: "{{ hostvars['localhost']['workflow_tasks'] | default([]) + [task_record] }}"
@@ -41,18 +77,18 @@
           service: "{{ service_item.name }}"
           action: "{{ service_action }}"
           start_time: "{{ hostvars['localhost']['task_start_time'] }}"
-          end_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
+          end_time: "{{ ansible_date_time.iso8601 }}"
           status: "failed"
           error: "{{ ansible_failed_result.msg | default('Unknown error') }}"
         failure_info:
           failed_task: "{{ service_item.name }} service {{ service_action }}"
           failed_service: "{{ service_item.name }}"
-          failure_time: "{{ lookup('pipe', 'date -u +\"%Y-%m-%dT%H:%M:%SZ\"') }}"
+          failure_time: "{{ ansible_date_time.iso8601 }}"
           error_message: "{{ ansible_failed_result.msg | default('Unknown error') }}"
           error_details: "{{ ansible_failed_result | to_nice_json }}"
       delegate_to: localhost
       delegate_facts: true
-      run_once: true  # noqa: run-once
+      run_once: true
 
     - name: "Re-raise the failure"
       ansible.builtin.fail:

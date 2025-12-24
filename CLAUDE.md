@@ -59,8 +59,6 @@ Each service has a vars file in `vars/` with `appname_` prefixed variables:
 - `appname_process_identifier` - Pattern for pkill fallback (must be >= 5 chars, properly quoted for security)
 - `inventory_group` - Target host group (not prefixed, used by orchestration)
 
-Central registry in `vars/services.yml` documents all services.
-
 ### Key Features
 
 - **Dual Mode Support**: Use custom control scripts OR Ansible's systemd module
@@ -90,5 +88,4 @@ Scripts with non-standard return codes are supported via:
    inventory_group: "newservice_servers"
    ```
 2. Add `[newservice_servers]` group to `inventory/hosts`
-3. Add service to workflow playbooks (or use dynamic loading)
-4. Update `vars/services.yml` registry for documentation
+3. Add service to all three workflow playbooks (appname_start.yml, appname_stop.yml, appname_status.yml)

@@ -107,7 +107,6 @@ ansible-cal/
 │   └── appname_status.yml                 # Status workflow
 ├── inventory/hosts                    # Inventory with service groups
 ├── vars/
-│   ├── services.yml                   # Central services registry
 │   ├── foo.yml                        # Service configurations
 │   ├── bar.yml
 │   └── elephant.yml

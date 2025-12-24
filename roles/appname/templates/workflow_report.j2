@@ -1,9 +1,29 @@
+{# ========================================================================== #}
+{# WORKFLOW REPORT TEMPLATE                                                  #}
+{# ========================================================================== #}
+{# Comprehensive email report for all workflow operations (start/stop/status) #}
+{#                                                                            #}
+{# Required variables:                                                        #}
+{#   - workflow_metadata: Dict with workflow status and timing               #}
+{#   - workflow_tasks: Array of task execution records                       #}
+{#   - appname_workflow_duration: Calculated duration in seconds             #}
+{#   - appname_all_force_kill_events: Array of force-kill events (optional)  #}
+{#   - appname_all_file_monitor_events: Array of file monitoring (optional)  #}
+{# ========================================================================== #}
+
+{# ========================================================================== #}
+{# FAILURE ALERT BANNER                                                       #}
+{# ========================================================================== #}
 {% if workflow_metadata.workflow_status != 'success' %}
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! WORKFLOW FAILED - SEE FAILURE DETAILS BELOW
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 {% endif %}
+
+{# ========================================================================== #}
+{# WORKFLOW SUMMARY                                                           #}
+{# ========================================================================== #}
 ================================================================================
 WORKFLOW REPORT: {{ workflow_metadata.workflow_type | upper }}
 ================================================================================
@@ -17,6 +37,9 @@ Duration: {{ appname_workflow_duration }} seconds ({{ (appname_workflow_duration
 Initiated By: {{ workflow_metadata.workflow_user }}
 Ansible Control Node: {{ workflow_metadata.ansible_control_node }}
 
+{# ========================================================================== #}
+{# FAILURE DETAILS                                                            #}
+{# ========================================================================== #}
 {% if workflow_metadata.workflow_status != 'success' and workflow_metadata.failure_details is defined %}
 ================================================================================
 FAILURE DETAILS
@@ -35,6 +58,10 @@ Error Details:
 {% endif %}
 
 {% endif %}
+
+{# ========================================================================== #}
+{# TASK EXECUTION TIMELINE                                                    #}
+{# ========================================================================== #}
 ================================================================================
 TASK EXECUTION TIMELINE
 ================================================================================
@@ -54,6 +81,9 @@ Error: {{ task.error }}
 
 {% endfor %}
 
+{# ========================================================================== #}
+{# FORCE KILL EVENTS                                                          #}
+{# ========================================================================== #}
 {% if appname_all_force_kill_events | default([]) | length > 0 %}
 ================================================================================
 FORCE KILL EVENTS ({{ appname_all_force_kill_events | length }})
@@ -71,6 +101,9 @@ Process Details (ps aux):
 {% endfor %}
 {% endif %}
 
+{# ========================================================================== #}
+{# FILE MONITORING EVENTS                                                     #}
+{# ========================================================================== #}
 {% if appname_all_file_monitor_events | default([]) | length > 0 %}
 ================================================================================
 FILE MONITORING EVENTS ({{ appname_all_file_monitor_events | length }})
@@ -94,6 +127,9 @@ File: {{ file.path }}
 {% endfor %}
 {% endif %}
 
+{# ========================================================================== #}
+{# SUMMARY STATISTICS                                                         #}
+{# ========================================================================== #}
 ================================================================================
 SUMMARY
 ================================================================================

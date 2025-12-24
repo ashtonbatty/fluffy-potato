@@ -1,0 +1,126 @@
+---
+# ========================================
+# Ansible Lint Configuration
+# ========================================
+# See: https://ansible-lint.readthedocs.io/
+
+# ========================================
+# SKIP LIST
+# ========================================
+# Rules to skip globally
+
+skip_list:
+  # run-once pattern is legitimately used in workflow tracking
+  # Facts must be set once on localhost to coordinate across service hosts
+  - run-once[task]
+
+  # Temporary workflow tracking variables (task_start_time, final_status, etc.)
+  # don't need role prefix as they're internal to the workflow coordination
+  - var-naming[no-role-prefix]
+
+  # Task names with Jinja templates in the middle provide better readability
+  # for service-specific operations (e.g., "Stop service for {{ service_name }}")
+  - name[template]
+
+  # This project doesn't use handlers - all operations are in tasks
+  - no-handler
+
+# ========================================
+# WARN LIST
+# ========================================
+# Rules that should warn but not fail
+
+warn_list:
+  - experimental  # Experimental rules are opt-in warnings
+  - yaml[line-length]  # Warn on long lines but don't fail
+
+# ========================================
+# ENABLE LIST
+# ========================================
+# Explicitly enable specific rules
+
+enable_list:
+  - yaml[trailing-spaces]  # No trailing whitespace
+  - yaml[indentation]  # Consistent indentation
+  - no-changed-when  # Ensure changed_when is set appropriately
+  - no-handler  # Handlers should be in handlers/ directory
+
+# ========================================
+# RULE CONFIGURATION
+# ========================================
+# Most rule configuration is done via CLI flags or by using skip_list/warn_list
+
+# ========================================
+# EXCLUSIONS
+# ========================================
+# Files and directories to exclude from linting
+
+exclude_paths:
+  - .cache/  # Cache directory
+  - .git/  # Git directory
+  - .github/  # GitHub workflows (may have different YAML standards)
+  - venv/  # Virtual environment
+  - .venv/  # Virtual environment (alternative name)
+  - molecule/  # Molecule test scenarios (may have looser rules)
+  - CODE_REVIEW.md  # Review document
+  - TODO.md  # Task list
+
+# ========================================
+# OFFLINE MODE
+# ========================================
+# Don't check for updates or download schemas
+
+offline: false
+
+# ========================================
+# PARSING OPTIONS
+# ========================================
+
+# Use Ansible's native YAML parser
+use_default_rules: true
+
+# Parse role metadata
+mock_modules: []
+mock_roles: []
+
+# ========================================
+# OUTPUT OPTIONS
+# ========================================
+
+# Display rule IDs in output (use --parseable flag at CLI)
+# parseable: false
+
+# Quiet mode (only show errors - use --quiet flag at CLI)
+# quiet: false
+
+# ========================================
+# PROJECT-SPECIFIC SETTINGS
+# ========================================
+
+# Allow older Ansible versions (for compatibility)
+# If you require a specific Ansible version, uncomment and set:
+# min_ansible_version: "2.9"
+
+# Loop variable naming convention
+# Enforce consistent loop variable names
+# loop_var_prefix: "item_"
+
+# Task naming convention
+# Uncomment to enforce task names starting with specific patterns:
+# task_name_prefix:
+#   - "Check"
+#   - "Ensure"
+#   - "Install"
+#   - "Configure"
+
+# ========================================
+# NOTES
+# ========================================
+# run-once[task]:
+#   This rule is skipped because the workflow tracking pattern requires
+#   run_once on tasks that set facts on localhost. This is the correct
+#   pattern for coordinating state across multiple service hosts.
+#
+# line-length:
+#   Set to 160 to accommodate complex Jinja2 expressions in vars and
+#   conditionals. Breaking these across lines often reduces readability.

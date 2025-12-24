@@ -3,6 +3,9 @@
 - name: "Check service status using service module for {{ appname_service_name }}"
   ansible.builtin.systemd:
     name: "{{ appname_service_name }}"
+  become: "{{ appname_service_become }}"
+  become_user: "{{ appname_service_become_user }}"
+  become_flags: "{{ appname_service_become_flags }}"
   register: appname_status_result
   failed_when: false
 

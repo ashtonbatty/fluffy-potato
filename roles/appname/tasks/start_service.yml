@@ -6,11 +6,17 @@
     state: started
     enabled: "{{ appname_service_enabled | default(omit) }}"
     daemon_reload: "{{ appname_service_daemon_reload | default(false) }}"
+  become: "{{ appname_service_become }}"
+  become_user: "{{ appname_service_become_user }}"
+  become_flags: "{{ appname_service_become_flags }}"
   register: appname_start_result
 
 - name: "Wait for service to be running for {{ appname_service_name }}"
   ansible.builtin.systemd:
     name: "{{ appname_service_name }}"
+  become: "{{ appname_service_become }}"
+  become_user: "{{ appname_service_become_user }}"
+  become_flags: "{{ appname_service_become_flags }}"
   register: appname_status_result
   until: appname_status_result.status.ActiveState == "active"
   retries: "{{ appname_start_retries }}"

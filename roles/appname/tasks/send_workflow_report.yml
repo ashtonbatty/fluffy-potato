@@ -8,7 +8,7 @@
       {{ ansible_play_hosts_all |
          map('extract', hostvars, 'appname_force_kill_events') |
          select('defined') | flatten | list }}
-  run_once: true  # noqa: run-once
+  run_once: true
 
 - name: "Gather file monitoring events from all hosts"
   ansible.builtin.set_fact:
@@ -16,14 +16,14 @@
       {{ ansible_play_hosts_all |
          map('extract', hostvars, 'appname_file_monitor_events') |
          select('defined') | flatten | list }}
-  run_once: true  # noqa: run-once
+  run_once: true
 
 - name: "Calculate workflow duration"
   ansible.builtin.set_fact:
     appname_workflow_duration: >-
       {{ ((workflow_metadata.workflow_end_time | to_datetime('%Y-%m-%dT%H:%M:%SZ')) -
           (workflow_metadata.workflow_start_time | to_datetime('%Y-%m-%dT%H:%M:%SZ'))).total_seconds() | int }}
-  run_once: true  # noqa: run-once
+  run_once: true
 
 - name: "Determine email subject based on workflow status"
   ansible.builtin.set_fact:
@@ -31,12 +31,12 @@
       {{ '[SUCCESS]' if workflow_metadata.workflow_status == 'success' else '[FAILURE]' }}
       {{ workflow_metadata.workflow_type | upper }} workflow completed -
       {{ workflow_metadata.ansible_control_node }}
-  run_once: true  # noqa: run-once
+  run_once: true
 
 - name: "Build comprehensive workflow report from template"
   ansible.builtin.set_fact:
     appname_workflow_report: "{{ lookup('template', 'workflow_report.j2') }}"
-  run_once: true  # noqa: run-once
+  run_once: true
 
 - name: "Send workflow report email"
   community.general.mail:
@@ -47,10 +47,10 @@
     subject: "{{ appname_email_subject_prefix }} {{ appname_email_subject }}"
     body: "{{ appname_workflow_report }}"
     secure: "{{ appname_email_secure }}"
-  run_once: true  # noqa: run-once
+  run_once: true
   when: appname_email_enabled | default(true)
 
 - name: "Display workflow report"
   ansible.builtin.debug:
     msg: "{{ appname_workflow_report }}"
-  run_once: true  # noqa: run-once
+  run_once: true

@@ -77,29 +77,5 @@
       vars:
         service_action: "status"
 
-- name: "Complete workflow and send report"
-  hosts: all_services
-  gather_facts: false
-  tasks:
-    - name: "Mark workflow as complete"
-      ansible.builtin.set_fact:
-        workflow_metadata: >-
-          {{ hostvars['localhost']['workflow_metadata'] | combine({
-              'workflow_end_time': lookup('pipe', 'date -u +"%Y-%m-%dT%H:%M:%SZ"'),
-              'workflow_status': workflow_final_status
-            })
-          }}
-      vars:
-        workflow_final_status: >-
-          {{
-            hostvars['localhost']['workflow_metadata']['workflow_status']
-            if hostvars['localhost']['workflow_metadata']['workflow_status'] == 'failed'
-            else 'success'
-          }}
-      delegate_facts: true
-      run_once: true  # noqa: run-once
-
-    - name: "Send comprehensive workflow report"
-      ansible.builtin.include_tasks:
-        file: ../roles/appname/tasks/send_workflow_report.yml
-      run_once: true  # noqa: run-once
+- name: "Finalize workflow"
+  ansible.builtin.import_playbook: common/finalize_workflow.yml

@@ -1,65 +1,232 @@
 ---
-# Service configuration
+# ========================================
+# SERVICE CONFIGURATION
+# ========================================
+
+# Name of the service (used in logs, reports, and systemd operations)
+# This is the primary identifier for the service across all operations
 appname_service_name: "myservice"
 
-# Script-based service control (optional)
-# If appname_service_script is defined, the role will use the script for service operations
-# If appname_service_script is not defined, the role will use Ansible's systemd module instead
-# appname_service_script: "/scripts/{{ appname_service_name }}.sh"  # Define in vars/ for script-based services
+# ========================================
+# SERVICE CONTROL MODE
+# ========================================
 
-# Service module configuration (used when appname_service_script is not defined)
-# appname_service_enabled: true  # Whether to enable the service at boot (optional)
-# appname_service_daemon_reload: false  # Whether to reload systemd daemon before operation
+# Script-based service control (OPTIONAL)
+# If defined: Role will execute this script for start/stop/status operations
+# If undefined: Role will use Ansible's systemd module for service management
+# Format: Absolute path to executable script
+# Example: "/scripts/{{ appname_service_name }}.sh"
+# Define this in service-specific vars files (e.g., vars/foo.yml) for script-based services
+# appname_service_script: "/scripts/{{ appname_service_name }}.sh"
 
-# Process identification for kill operation (only used with script-based services)
+# Systemd service configuration (used when appname_service_script is NOT defined)
+# appname_service_enabled: true          # Whether to enable service at boot (passed to systemd module)
+# appname_service_daemon_reload: false   # Whether to reload systemd daemon before operations
+
+# ========================================
+# PROCESS IDENTIFICATION (Script-based services only)
+# ========================================
+
+# Process identifier pattern for force-kill fallback operations
+# Used by pkill when graceful shutdown fails
+# SECURITY: Must be at least 5 characters to prevent accidental kills
+# Common patterns: "COMPONENT=foo", "APP_NAME=bar", "python myapp.py"
+# Only used when appname_service_script is defined
+# Default uses service name as component identifier
 appname_process_identifier: "COMPONENT={{ appname_service_name }}"
 
-# Privilege escalation for service operations
+# ========================================
+# PRIVILEGE ESCALATION
+# ========================================
+
+# Enable privilege escalation for service operations
+# Set to true when operations require elevated privileges (e.g., systemd, root-owned scripts)
+# Used for both script-based and systemd-based services
 appname_service_become: false
+
+# User to become when privilege escalation is enabled
+# Common values: "root", specific service user
 appname_service_become_user: "root"
+
+# Additional flags for become operation
+# Examples: "-i" for login shell, "-H" to set HOME variable
+# Leave empty for default behavior
 appname_service_become_flags: ""
 
-# String validation for commands
+# ========================================
+# OUTPUT VALIDATION STRINGS (Script-based services only)
+# ========================================
+
+# Expected strings in script output to validate operations
+# These strings are searched for in stdout to confirm service state
+# Customize these to match your actual script output
+
+# String to expect in output when service start command is executed
+# Example: If script outputs "Service starting...", use "starting"
 appname_start_check_string: "starting"
+
+# String to expect in output when service stop command is executed
+# Example: If script outputs "Service stopping...", use "stopping"
 appname_stop_check_string: "stopping"
+
+# String to expect in status output when service is running
+# Example: If script outputs "Status: running", use "running"
 appname_running_check_string: "running"
+
+# String to expect in status output when service is stopped
+# Example: If script outputs "Status: stopped", use "stopped"
 appname_stopped_check_string: "stopped"
 
-# Force kill configuration
+# ========================================
+# FORCE KILL CONFIGURATION (Script-based services only)
+# ========================================
+
+# Enable force-kill fallback when graceful stop fails
+# SECURITY: Set to false in production to prevent potentially dangerous pkill operations
+# When true: Failed graceful stops will attempt pkill with process identifier
+# When false: Failed graceful stops will fail the playbook
+# Only applies to script-based services (systemd has its own kill handling)
 appname_allow_force_kill: true
 
-# Timing configuration
+# ========================================
+# TIMING AND RETRY CONFIGURATION
+# ========================================
+
+# Seconds to wait after force-kill before verifying service is stopped
+# Allows time for process cleanup after kill signal
+# Increase for services with slow shutdown handlers
 appname_post_kill_wait_seconds: 3
+
+# Seconds to wait between retry attempts for status checks
+# Used in all retry loops (start, stop, kill verification)
+# Increase for services with slow state transitions
 appname_retry_delay: 3
+
+# Number of retries when verifying service started successfully
+# Total wait time: appname_start_retries × appname_retry_delay
+# Increase for services with slow startup times
 appname_start_retries: 3
+
+# Number of retries when verifying graceful stop succeeded
+# Total wait time: appname_stop_retries × appname_retry_delay
+# Increase for services with slow graceful shutdown
 appname_stop_retries: 3
+
+# Number of retries when verifying force-kill succeeded
+# Total wait time: appname_stop_kill_retries × appname_retry_delay
+# Usually needs fewer retries since SIGKILL is immediate
 appname_stop_kill_retries: 2
+
+# Maximum seconds for any script execution before timeout
+# Applies to all script invocations (start/stop/status)
+# IMPORTANT: Set higher than expected operation time to prevent false failures
+# Default 300 seconds (5 minutes) should be sufficient for most services
 appname_script_timeout: 300
 
-# Return code configuration
-# Set to expected return code (usually 0), or omit/set to null to skip RC checking
+# ========================================
+# RETURN CODE VALIDATION (Script-based services only)
+# ========================================
+
+# Expected return codes for script operations
+# Set to expected return code (usually 0) to validate script exit status
+# Set to null or omit the variable to skip return code checking
+# Useful for scripts with non-standard success codes
+
+# Expected return code for start operation
+# Example: If start script returns 0 on success, use 0
+# Example: If start script returns 1 on success, use 1
+# Example: To skip RC checking, set to null or omit
 appname_start_expected_rc: 0
+
+# Expected return code for stop operation
+# Example: If stop script returns 0 on success, use 0
 appname_stop_expected_rc: 0
+
+# Expected return code for status operation
+# Example: If status script returns 0 when running, use 0
 appname_status_expected_rc: 0
 
-# Service operation to perform (start, stop, status)
+# ========================================
+# SERVICE ACTION
+# ========================================
+
+# Service operation to perform: start, stop, or status
+# NOTE: This default is typically overridden by workflow playbooks
+# Workflow playbooks set this via vars: block with appropriate action
+# Default value provided for standalone role usage
 appname_service_action: "status"
 
-# File monitoring configuration (for wait_for_files_deleted task)
+# ========================================
+# FILE MONITORING CONFIGURATION
+# ========================================
+
+# Enable file deletion monitoring during stop workflows
+# When enabled, playbook will wait for specified files to be deleted
+# Useful for ensuring cleanup tasks complete before proceeding
+# Typically used in stop workflow between service operations
 appname_file_monitor_enabled: false
+
+# Directory path to monitor for file deletion
+# Must be an absolute path to existing directory
+# Example: "/var/run/myapp", "/tmp/myservice"
 appname_file_monitor_path: "/tmp"
+
+# List of file patterns to monitor for deletion
+# Uses glob patterns (wildcards supported)
+# Examples: ["*.tmp"], ["*.lock", "*.pid"], ["specific-file.txt"]
 appname_file_monitor_patterns:
   - "*.tmp"
   - "*.lock"
+
+# Maximum seconds to wait for all files to be deleted
+# Total wait time before timeout
+# Increase for services with lengthy cleanup operations
 appname_file_monitor_timeout: 300
+
+# Seconds between file existence checks
+# Frequency of polling the directory for file presence
+# Lower values = more frequent checks, higher system load
 appname_file_monitor_check_interval: 5
+
+# Whether to fail the playbook if files remain after timeout
+# true: Fail playbook if timeout occurs (strict cleanup enforcement)
+# false: Log warning but continue (best-effort cleanup)
 appname_file_monitor_fail_on_timeout: true
 
-# Email notification configuration
+# ========================================
+# EMAIL NOTIFICATION CONFIGURATION
+# ========================================
+
+# Enable email workflow reports
+# When enabled, comprehensive reports are sent after all workflow operations
+# Reports include: task timing, force-kill events, file monitoring, failures
 appname_email_enabled: true
+
+# SMTP server hostname or IP address
+# Examples: "localhost", "smtp.example.com", "192.168.1.10"
 appname_email_smtp_host: "localhost"
+
+# SMTP server port number
+# Common ports: 25 (SMTP), 587 (submission), 465 (SMTPS)
 appname_email_smtp_port: 25
+
+# From email address for notification emails
+# Uses inventory_hostname by default for per-host identification
+# Example: "ansible@production-server.example.com"
 appname_email_from: "ansible@{{ inventory_hostname }}"
+
+# Recipient email address for workflow reports
+# IMPORTANT: Change this from default example value before production use
+# Supports single address (future: could support list)
+# Example: "ops-team@example.com"
 appname_email_to: "admin@example.com"
+
+# Prefix added to all email subjects for filtering
+# Helps with email client rules and alerting systems
+# Example: "[Ansible Alert]", "[Production]", "[CRITICAL]"
 appname_email_subject_prefix: "[Ansible Alert]"
+
+# Email security/encryption mode
+# Options: "never" (no encryption), "try" (STARTTLS if available), "always" (require STARTTLS)
+# Use "always" for production with proper SMTP server
 appname_email_secure: "never"

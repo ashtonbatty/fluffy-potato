@@ -1,0 +1,45 @@
+---
+# ========================================
+# WORKFLOW FINALIZATION
+# ========================================
+# Finalize workflow tracking and send comprehensive report
+# This playbook is imported by all workflow playbooks (start, stop, status)
+# to ensure consistent workflow completion and reporting
+#
+# Prerequisites:
+#   - workflow_metadata must be initialized on localhost
+#   - workflow_tasks array must exist on localhost
+#   - gather_facts must have been run on localhost for timestamp generation
+#
+# What this does:
+#   1. Calculate final workflow status (success unless explicitly failed)
+#   2. Record workflow end time
+#   3. Update workflow_metadata with completion details
+#   4. Send comprehensive email report (if enabled)
+
+- name: "Complete workflow and send report"
+  hosts: all_services
+  gather_facts: false
+  tasks:
+    - name: "Calculate final workflow status"
+      ansible.builtin.set_fact:
+        final_status: "{{ 'failed' if hostvars['localhost']['workflow_metadata']['workflow_status'] == 'failed' else 'success' }}"
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
+
+    - name: "Mark workflow as complete"
+      ansible.builtin.set_fact:
+        workflow_metadata: "{{ hostvars['localhost']['workflow_metadata'] | combine(final_metadata) }}"
+      vars:
+        final_metadata:
+          workflow_end_time: "{{ hostvars['localhost']['ansible_date_time']['iso8601'] }}"
+          workflow_status: "{{ final_status }}"
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
+
+    - name: "Send comprehensive workflow report"
+      ansible.builtin.include_tasks:
+        file: ../../roles/appname/tasks/send_workflow_report.yml
+      run_once: true
