@@ -1,5 +1,0 @@
----
-appname_service_name: "elephant"
-appname_service_script: "/scripts/elephant.sh"
-appname_process_identifier: "COMPONENT=elephant"
-inventory_group: "elephant_servers"

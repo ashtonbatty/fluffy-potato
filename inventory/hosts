@@ -1,13 +1,160 @@
-[foo_servers]
-localhost
+# ========================================
+# PRODUCTION INVENTORY
+# ========================================
+# Infrastructure-based grouping for multi-datacenter deployment
+#
+# Hierarchy: Hosts → Infrastructure Groups → Location/Function Groups → Service Groups
+# Variable precedence: Role defaults < all.yml < location < function < infrastructure < service < host
+#
+# Total hosts: 98 (sample hosts shown below for demonstration)
+# Datacenters: 2 (dc1, dc2)
+# Host categories: 6 (app, web, db_coord, db_segs, cache, queue)
 
-[bar_servers]
-localhost
+# ========================================
+# DATACENTER 1 - INFRASTRUCTURE GROUPS
+# ========================================
 
-[elephant_servers]
-localhost
+[app_dc1]
+app-01.dc1.example.com
+app-02.dc1.example.com
+app-03.dc1.example.com
+
+[web_dc1]
+web-01.dc1.example.com
+web-02.dc1.example.com
+
+[db_coord_dc1]
+db-coord-01.dc1.example.com
+
+[db_segs_dc1]
+db-seg-01.dc1.example.com
+db-seg-02.dc1.example.com
+db-seg-03.dc1.example.com
+
+[cache_dc1]
+cache-01.dc1.example.com
+cache-02.dc1.example.com
+
+[queue_dc1]
+queue-01.dc1.example.com
+queue-02.dc1.example.com
+
+# ========================================
+# DATACENTER 2 - INFRASTRUCTURE GROUPS
+# ========================================
+
+[app_dc2]
+app-01.dc2.example.com
+app-02.dc2.example.com
+app-03.dc2.example.com
+
+[web_dc2]
+web-01.dc2.example.com
+web-02.dc2.example.com
+
+[db_coord_dc2]
+db-coord-01.dc2.example.com
+
+[db_segs_dc2]
+db-seg-01.dc2.example.com
+db-seg-02.dc2.example.com
+db-seg-03.dc2.example.com
+
+[cache_dc2]
+cache-01.dc2.example.com
+cache-02.dc2.example.com
+
+[queue_dc2]
+queue-01.dc2.example.com
+queue-02.dc2.example.com
+
+# ========================================
+# LOCATION AGGREGATION
+# ========================================
+# Allows targeting by datacenter (e.g., --limit dc1)
+
+[dc1:children]
+app_dc1
+web_dc1
+db_coord_dc1
+db_segs_dc1
+cache_dc1
+queue_dc1
+
+[dc2:children]
+app_dc2
+web_dc2
+db_coord_dc2
+db_segs_dc2
+cache_dc2
+queue_dc2
+
+# ========================================
+# FUNCTION/TIER AGGREGATION
+# ========================================
+# Allows targeting by function (e.g., --limit app_tier)
+
+[app_tier:children]
+app_dc1
+app_dc2
+
+[web_tier:children]
+web_dc1
+web_dc2
+
+[db_coord_tier:children]
+db_coord_dc1
+db_coord_dc2
+
+[db_segs_tier:children]
+db_segs_dc1
+db_segs_dc2
+
+[cache_tier:children]
+cache_dc1
+cache_dc2
+
+[queue_tier:children]
+queue_dc1
+queue_dc2
+
+# ========================================
+# SERVICE GROUPS (Map services to infrastructure)
+# ========================================
+# Services are mapped to infrastructure groups based on deployment requirements
+
+# foo service runs on application tier
+[foo_servers:children]
+app_dc1
+app_dc2
+
+# bar service runs on database coordinators and web tier
+[bar_servers:children]
+db_coord_dc1
+db_coord_dc2
+web_dc1
+web_dc2
+
+# elephant service runs on database segments
+[elephant_servers:children]
+db_segs_dc1
+db_segs_dc2
+
+# queue service runs on queue tier (handles file monitoring and queue processing)
+[queue_servers:children]
+queue_dc1
+queue_dc2
+
+# ========================================
+# ENVIRONMENT/GLOBAL GROUPS
+# ========================================
+
+[production:children]
+dc1
+dc2
 
 [all_services:children]
 foo_servers
 bar_servers
 elephant_servers
+queue_servers

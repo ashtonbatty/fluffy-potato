@@ -1,27 +1,59 @@
 ---
-# Wait for files to be deleted from a directory and report remaining files via email
+# ========================================
+# PIPELINE QUEUE DRAIN MONITORING
+# ========================================
+# Wait for pipeline queue to drain during graceful shutdown
+# Uses age-based filtering to ignore old stuck files during monitoring,
+# then captures full file list (including stuck files) for reporting
+
 - name: "Check if file monitoring is enabled"
   ansible.builtin.debug:
-    msg: "Monitoring {{ appname_file_monitor_path }} for file deletion"
+    msg: "Monitoring {{ appname_file_monitor_path }} for pipeline queue drain"
   when: appname_file_monitor_enabled | default(false)
 
-- name: "Wait for files to be deleted from {{ appname_file_monitor_path }}"
+- name: "Wait for pipeline queue to drain from {{ appname_file_monitor_path }}"
   when: appname_file_monitor_enabled | default(false)
   block:
-    - name: "Monitor directory for file deletion with timeout"
+    # ========================================
+    # MONITOR RECENT FILES ONLY
+    # ========================================
+    # Only check files modified within grace period to avoid blocking on old stuck files
+    # Grace period is slightly longer than timeout to detect newly stuck processes
+
+    - name: "Monitor directory for recent queue files (age-filtered)"
       ansible.builtin.find:
         paths: "{{ appname_file_monitor_path }}"
         patterns: "{{ appname_file_monitor_patterns }}"
         recurse: false
+        age: "-{{ appname_file_monitor_grace }}"
+        age_stamp: mtime
       register: appname_monitor_result
-      until: appname_monitor_result.files | length == 0
+      until: appname_monitor_result.matched == 0
       retries: "{{ (appname_file_monitor_timeout / appname_file_monitor_check_interval) | int }}"
       delay: "{{ appname_file_monitor_check_interval }}"
       failed_when: false
       changed_when: false
 
+    # ========================================
+    # FINAL CHECK - ALL FILES FOR REPORTING
+    # ========================================
+    # After monitoring completes, get full file list including old stuck files
+    # This ensures email reports show the complete picture
+
+    - name: "Get final file list for reporting (including old stuck files)"
+      ansible.builtin.find:
+        paths: "{{ appname_file_monitor_path }}"
+        patterns: "{{ appname_file_monitor_patterns }}"
+        recurse: false
+      register: appname_final_files
+      when: appname_monitor_result.matched > 0
+
+    # ========================================
+    # REPORTING AND FAILURE HANDLING
+    # ========================================
+
     - name: "Gather remaining file information if timeout occurred"
-      when: appname_monitor_result.files | length > 0
+      when: appname_monitor_result.matched > 0
       block:
         - name: "Record remaining files event for reporting"
           ansible.builtin.set_fact:
@@ -31,18 +63,24 @@
               hostname: "{{ inventory_hostname }}"
               directory: "{{ appname_file_monitor_path }}"
               timeout: "{{ appname_file_monitor_timeout }}"
-              remaining_files: "{{ appname_monitor_result.files }}"
+              grace_period: "{{ appname_file_monitor_grace }}"
+              recent_files_at_timeout: "{{ appname_monitor_result.matched }}"
+              remaining_files: "{{ appname_final_files.files }}"
+              total_remaining: "{{ appname_final_files.matched }}"
 
         - name: "Display file monitoring status"
           ansible.builtin.debug:
-            msg: "{{ appname_monitor_result.files | length }} files still present in {{ appname_file_monitor_path }} after timeout"
+            msg: >-
+              Queue drain timeout: {{ appname_final_files.matched }} total files remain
+              ({{ appname_monitor_result.matched }} recent,
+              {{ appname_final_files.matched - appname_monitor_result.matched }} old stuck files)
 
         - name: "Fail if configured to fail on timeout"
           ansible.builtin.fail:
-            msg: "File deletion timeout: {{ appname_monitor_result.files | length }} files still present in {{ appname_file_monitor_path }}"
+            msg: "Pipeline queue drain timeout: {{ appname_final_files.matched }} files still present in {{ appname_file_monitor_path }}"
           when: appname_file_monitor_fail_on_timeout | default(true)
 
-    - name: "All files successfully deleted"
+    - name: "Pipeline queue successfully drained"
       ansible.builtin.debug:
-        msg: "All monitored files have been deleted from {{ appname_file_monitor_path }}"
-      when: appname_monitor_result.files | length == 0
+        msg: "All recent queue files have been processed from {{ appname_file_monitor_path }}"
+      when: appname_monitor_result.matched == 0

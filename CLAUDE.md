@@ -53,11 +53,16 @@ The framework uses separate workflow playbooks for different operations:
 
 ### Service Configuration
 
-Each service has a vars file in `vars/` with `appname_` prefixed variables:
-- `appname_service_name` - Service identifier
-- `appname_service_script` - Path to control script (optional - omit for systemd services)
-- `appname_process_identifier` - Pattern for pkill fallback (must be >= 5 chars, properly quoted for security)
-- `inventory_group` - Target host group (not prefixed, used by orchestration)
+Service configuration uses Ansible's standard group_vars structure:
+- **Global settings**: `inventory/group_vars/all.yml` (SMTP, email, privilege escalation)
+- **Service-specific**: `inventory/group_vars/<service>_servers.yml` with `appname_` prefixed variables:
+  - `appname_service_name` - Service identifier
+  - `appname_service_script` - Path to control script (optional - omit for systemd services)
+  - `appname_process_identifier` - Pattern for pkill fallback (must be >= 5 chars, properly quoted for security)
+- **Tier-specific overrides**: `inventory/group_vars/<tier>_tier.yml` (e.g., db_segs_tier.yml for database-specific timeouts)
+- **Infrastructure groups**: Defined in `inventory/hosts` with nested group inheritance
+
+Variables are automatically loaded by Ansible based on group membership - no explicit vars_files needed
 
 ### Key Features
 
@@ -80,12 +85,39 @@ Scripts with non-standard return codes are supported via:
 
 ## Adding a New Service
 
-1. Create `vars/newservice.yml` with service configuration (using `appname_` prefix):
+1. **Add infrastructure groups to `inventory/hosts`**:
+   ```ini
+   # Add infrastructure groups for the service (e.g., for service running on app tier)
+   [newservice_servers:children]
+   app_dc1
+   app_dc2
+   ```
+
+2. **Create `inventory/group_vars/newservice_servers.yml`** with service configuration (using `appname_` prefix):
    ```yaml
+   ---
+   # Service: newservice
+   # Runs on: app_tier (app_dc1, app_dc2)
+
    appname_service_name: "newservice"
    appname_service_script: "/scripts/newservice.sh"  # Omit for systemd services
    appname_process_identifier: "COMPONENT=newservice"  # Only needed for script-based
-   inventory_group: "newservice_servers"
+
+   # Service-specific overrides (optional)
+   # appname_start_retries: 5
+   # appname_script_timeout: 600
    ```
-2. Add `[newservice_servers]` group to `inventory/hosts`
-3. Add service to all three workflow playbooks (appname_start.yml, appname_stop.yml, appname_status.yml)
+
+3. **Add service to workflow playbooks**:
+   - `playbooks/appname_start.yml` - Add service play in desired order
+   - `playbooks/appname_stop.yml` - Add service play in reverse order
+   - `playbooks/appname_status.yml` - Add service play in same order as start
+
+4. **Update `inventory/hosts`** all_services group:
+   ```ini
+   [all_services:children]
+   foo_servers
+   bar_servers
+   elephant_servers
+   newservice_servers
+   ```

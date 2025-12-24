@@ -1,0 +1,15 @@
+---
+# ========================================
+# SERVICE: bar
+# ========================================
+# Runs on: db_coord_tier + web_tier (db_coord_dc1, db_coord_dc2, web_dc1, web_dc2)
+# Migrated from: vars/bar.yml
+
+appname_service_name: "bar"
+appname_service_script: "/scripts/bar.sh"
+appname_process_identifier: "COMPONENT=bar"
+
+# Service-specific overrides can be added here
+# Example:
+# appname_start_retries: 5
+# appname_script_timeout: 600

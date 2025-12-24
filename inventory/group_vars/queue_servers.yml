@@ -1,0 +1,44 @@
+---
+# ========================================
+# QUEUE SERVERS - PIPELINE QUEUE MONITORING
+# ========================================
+# Runs on: queue_tier (queue_dc1, queue_dc2)
+# Purpose: Monitor pipeline queue drain during graceful shutdown
+# Used by: wait_for_files_deleted task in stop workflow
+#
+# WORKFLOW CONTEXT:
+# Stop workflow order: Stop extract/input → Wait for queue drain → Stop load/output
+# This ensures the pipeline queue drains after stopping input before stopping output.
+# Prevents data loss by allowing in-flight records to complete processing.
+
+# ========================================
+# PIPELINE QUEUE MONITORING CONFIGURATION
+# ========================================
+# File-based queue state monitoring for graceful pipeline shutdown
+
+appname_file_monitor_enabled: true
+
+# Directory containing queue files (adjust to your pipeline's queue directory)
+appname_file_monitor_path: "/tmp"
+
+# Patterns matching queue files (adjust to your actual queue file patterns)
+# Examples: ["*.processing", "*.queued", "job-*.tmp"]
+appname_file_monitor_patterns:
+  - "*.tmp"
+  - "*.lock"
+
+# Maximum time to wait for queue drain before continuing shutdown
+# Set based on typical queue drain time + buffer for stuck processes
+appname_file_monitor_timeout: 300
+
+# Frequency of queue state checks
+appname_file_monitor_check_interval: 5
+
+# Fail playbook if queue doesn't drain (true) or continue anyway (false)
+# Set to true for data integrity, false if stuck load processes are expected
+appname_file_monitor_fail_on_timeout: false
+
+# Grace period for age-based filtering (seconds)
+# Files older than this are ignored during monitoring to prevent old stuck files from blocking
+# Old files are still captured in final report for visibility
+appname_file_monitor_grace: 360

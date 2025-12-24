@@ -1,0 +1,28 @@
+---
+# ========================================
+# GLOBAL PRODUCTION SETTINGS
+# ========================================
+# Variables defined here apply to ALL hosts in the inventory
+# These settings are consistent across both datacenters
+
+# ========================================
+# EMAIL NOTIFICATION CONFIGURATION
+# ========================================
+# SMTP settings are identical across all DCs/hosts
+
+appname_email_enabled: true
+appname_email_smtp_host: "smtp.company.com"
+appname_email_smtp_port: 587
+appname_email_from: "ansible-production@company.com"
+appname_email_to: "ops-team@company.com"
+appname_email_subject_prefix: "[PROD]"
+appname_email_secure: "try"
+
+# ========================================
+# PRIVILEGE ESCALATION
+# ========================================
+# Standard privilege escalation for all service operations
+
+appname_service_become: true
+appname_service_become_user: "root"
+appname_service_become_flags: ""

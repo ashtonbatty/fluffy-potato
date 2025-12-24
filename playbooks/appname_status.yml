@@ -22,8 +22,6 @@
   hosts: foo_servers
   gather_facts: false
   any_errors_fatal: false
-  vars_files:
-    - ../vars/foo.yml
   vars:
     appname_service_action: "status"
     service_item:
@@ -39,8 +37,6 @@
   hosts: bar_servers
   gather_facts: false
   any_errors_fatal: false
-  vars_files:
-    - ../vars/bar.yml
   vars:
     appname_service_action: "status"
     service_item:
@@ -60,8 +56,6 @@
   hosts: elephant_servers
   gather_facts: false
   any_errors_fatal: false
-  vars_files:
-    - ../vars/elephant.yml
   vars:
     appname_service_action: "status"
     service_item:

@@ -22,8 +22,6 @@
   hosts: elephant_servers
   gather_facts: false
   any_errors_fatal: false
-  vars_files:
-    - ../vars/elephant.yml
   vars:
     appname_service_action: "stop"
     service_item:
@@ -39,8 +37,6 @@
   hosts: bar_servers
   gather_facts: false
   any_errors_fatal: false
-  vars_files:
-    - ../vars/bar.yml
   vars:
     appname_service_action: "stop"
     service_item:
@@ -57,7 +53,7 @@
         service_action: "stop"
 
 - name: "File monitoring - Wait for file deletion"
-  hosts: all_services
+  hosts: queue_servers
   gather_facts: false
   tasks:
     - name: "Skip if previous task failed"
@@ -92,8 +88,6 @@
   hosts: foo_servers
   gather_facts: false
   any_errors_fatal: false
-  vars_files:
-    - ../vars/foo.yml
   vars:
     appname_service_action: "stop"
     service_item:

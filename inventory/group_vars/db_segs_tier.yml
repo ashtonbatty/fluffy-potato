@@ -1,0 +1,25 @@
+---
+# ========================================
+# DATABASE SEGMENTS TIER - SPECIAL CONFIGURATION
+# ========================================
+# Applies to: db_segs_dc1, db_segs_dc2
+# Services: elephant
+# These overrides ensure safe handling of database segment operations
+
+# ========================================
+# TIMEOUT CONFIGURATION
+# ========================================
+# Database segments need longer timeouts for graceful shutdown
+
+# Longer timeout for script execution
+appname_script_timeout: 1200
+
+# More retries for stop operations to allow data flush
+appname_stop_retries: 5
+
+# ========================================
+# FORCE KILL PROTECTION
+# ========================================
+# CRITICAL: Never force-kill database segments to prevent data corruption
+
+appname_allow_force_kill: false

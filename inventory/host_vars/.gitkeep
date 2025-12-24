@@ -1,0 +1,14 @@
+# Host-specific variable overrides
+#
+# Place host-specific YAML files here (e.g., hostname.yml) for edge cases
+# that cannot be handled by group_vars.
+#
+# Variable precedence (highest wins):
+#   host_vars/ > group_vars/<service>_servers.yml > group_vars/<tier>.yml > group_vars/all.yml > defaults/main.yml
+#
+# Best practice: Minimize use of host_vars - prefer group_vars for consistency.
+# Only use host_vars for truly unique host configurations.
+#
+# Example: inventory/host_vars/special-host.example.com.yml
+#   ---
+#   appname_script_timeout: 900  # This host needs longer timeout

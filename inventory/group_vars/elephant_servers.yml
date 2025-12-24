@@ -1,0 +1,15 @@
+---
+# ========================================
+# SERVICE: elephant
+# ========================================
+# Runs on: db_segs_tier (db_segs_dc1, db_segs_dc2)
+# Migrated from: vars/elephant.yml
+
+appname_service_name: "elephant"
+appname_service_script: "/scripts/elephant.sh"
+appname_process_identifier: "COMPONENT=elephant"
+
+# Service-specific overrides can be added here
+# Example:
+# appname_start_retries: 5
+# appname_script_timeout: 600

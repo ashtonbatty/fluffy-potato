@@ -1,6 +1,12 @@
 # Ansible runtime artifacts
 .ansible/
 *.retry
+ansible.log
+*.log
+
+# Molecule testing
+.molecule/
+.cache/
 
 # Python
 __pycache__/
@@ -8,11 +14,33 @@ __pycache__/
 *$py.class
 *.so
 .Python
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
 
 # Virtual environments
 venv/
+.venv/
 ENV/
 env/
+
+# Testing
+.tox/
+.coverage
+.pytest_cache/
+htmlcov/
+.nox/
 
 # IDE
 .vscode/
@@ -24,3 +52,10 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+.Trash-*/
+.nfs*
+
+# Backup files (use git history instead)
+*.backup
+*.bak
+*.orig

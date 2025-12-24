@@ -43,20 +43,92 @@ Before any operation, the role validates:
 3. Show return code
 4. Indicate if service is running or stopped
 
+## Inventory Structure and Variable Precedence
+
+### Infrastructure-Based Grouping
+
+The inventory uses a hierarchical structure with infrastructure groups at the base:
+
+**Hierarchy**: Hosts → Infrastructure Groups → Location/Function Groups → Service Groups
+
+**Variable Precedence** (lowest to highest):
+1. Role defaults (`roles/appname/defaults/main.yml`)
+2. Global settings (`inventory/group_vars/all.yml`)
+3. Location groups (`inventory/group_vars/dc1.yml`, `dc2.yml`)
+4. Function/tier groups (`inventory/group_vars/app_tier.yml`, `db_segs_tier.yml`)
+5. Infrastructure groups (`inventory/group_vars/app_dc1.yml`, `db_segs_dc2.yml`)
+6. Service groups (`inventory/group_vars/foo_servers.yml`, `bar_servers.yml`)
+7. Host-specific (`inventory/host_vars/hostname.yml`)
+
+### Example Infrastructure
+
+```ini
+# Infrastructure groups (Location + Function)
+[app_dc1]
+app-01.dc1.example.com
+app-02.dc1.example.com
+
+[db_segs_dc1]
+db-seg-01.dc1.example.com
+db-seg-02.dc1.example.com
+
+# Location aggregation
+[dc1:children]
+app_dc1
+db_segs_dc1
+
+# Function aggregation
+[db_segs_tier:children]
+db_segs_dc1
+db_segs_dc2
+
+# Service mapping
+[foo_servers:children]
+app_dc1
+app_dc2
+
+[elephant_servers:children]
+db_segs_dc1
+db_segs_dc2
+```
+
+### Variable Placement Guidelines
+
+- **Global overrides** (`all.yml`): SMTP settings, email configuration, common privilege escalation
+- **Tier-specific** (`<tier>_tier.yml`): Timeouts, retry counts, force-kill settings specific to infrastructure tier
+- **Service-specific** (`<service>_servers.yml`): Service name, script path, process identifier
+- **Host-specific** (`host_vars/`): Edge cases only - avoid if possible
+
 ## Adding New Services
 
-1. **Create vars file** (`vars/newservice.yml`):
-   ```yaml
-   appname_service_name: "newservice"
-   appname_service_script: "/scripts/newservice.sh"
-   appname_process_identifier: "COMPONENT=newservice"
-   inventory_group: "newservice_servers"
+1. **Update inventory groups** (`inventory/hosts`):
+   ```ini
+   # Map service to infrastructure groups
+   [newservice_servers:children]
+   app_dc1
+   app_dc2
+
+   # Add to all_services
+   [all_services:children]
+   foo_servers
+   bar_servers
+   elephant_servers
+   newservice_servers
    ```
 
-2. **Add inventory group** (`inventory/hosts`):
-   ```ini
-   [newservice_servers]
-   host5.example.com
+2. **Create group_vars file** (`inventory/group_vars/newservice_servers.yml`):
+   ```yaml
+   ---
+   # Service: newservice
+   # Runs on: app_tier (app_dc1, app_dc2)
+
+   appname_service_name: "newservice"
+   appname_service_script: "/scripts/newservice.sh"  # Omit for systemd
+   appname_process_identifier: "COMPONENT=newservice"
+
+   # Service-specific overrides (optional)
+   # appname_start_retries: 5
+   # appname_script_timeout: 600
    ```
 
 3. **Add play to all three workflow playbooks**:
@@ -64,14 +136,12 @@ Before any operation, the role validates:
    - Add to `playbooks/appname_stop.yml` in reverse order
    - Add to `playbooks/appname_status.yml` in same order as start
 
-   Example play structure:
+   Example play structure (no vars_files needed - automatically loaded from group_vars):
    ```yaml
    - name: "Newservice service - Start"
      hosts: newservice_servers
      gather_facts: false
      any_errors_fatal: false
-     vars_files:
-       - ../vars/newservice.yml
      vars:
        appname_service_action: "start"
        service_item:
@@ -131,7 +201,7 @@ Adjust these based on your service's startup/shutdown characteristics. Services 
 2. **Verify check strings** match actual script output
 3. **Set appropriate timeouts** for your service startup/shutdown times
 4. **Use specific process identifiers** (>= 5 chars) to avoid killing wrong processes
-5. **Keep service vars files in version control** for reproducibility
+5. **Keep group_vars files in version control** for reproducibility
 6. **Document custom configurations** in service-specific README files
 7. **Disable force kill in production** unless absolutely necessary (`appname_allow_force_kill: false`)
 8. **Run ansible-lint** before committing changes to catch issues early

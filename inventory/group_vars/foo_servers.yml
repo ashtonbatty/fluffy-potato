@@ -1,0 +1,15 @@
+---
+# ========================================
+# SERVICE: foo
+# ========================================
+# Runs on: app_tier (app_dc1, app_dc2)
+# Migrated from: vars/foo.yml
+
+appname_service_name: "foo"
+appname_service_script: "/scripts/foo.sh"
+appname_process_identifier: "COMPONENT=foo"
+
+# Service-specific overrides can be added here
+# Example:
+# appname_start_retries: 5
+# appname_script_timeout: 600

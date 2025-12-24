@@ -193,9 +193,16 @@ appname_file_monitor_check_interval: 5
 # false: Log warning but continue (best-effort cleanup)
 appname_file_monitor_fail_on_timeout: true
 
+# Grace period for age-based file filtering during monitoring (seconds)
+# Files older than this are ignored during monitoring loop to prevent old stuck files from blocking workflow
+# Full file list (including old files) is captured after monitoring for email reporting
+appname_file_monitor_grace: 360
+
 # ========================================
 # EMAIL NOTIFICATION CONFIGURATION
 # ========================================
+# NOTE: These are example defaults. Override in inventory/group_vars/all.yml
+# for production deployments with your actual SMTP settings.
 
 # Enable email workflow reports
 # When enabled, comprehensive reports are sent after all workflow operations
