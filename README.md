@@ -138,6 +138,48 @@ ansible-cal/
 - **[Examples](docs/examples.md)** - Usage examples and custom configurations
 - **[Architecture](docs/architecture.md)** - How it works, adding services, security, best practices
 
+## Testing
+
+### Molecule Test Scenarios
+
+Comprehensive test coverage with 8 Molecule scenarios testing all critical functionality:
+
+```bash
+# Run all test scenarios
+cd roles/appname
+for scenario in default force-kill file-monitoring return-codes idempotency privilege-escalation retry-logic workflow-reporting; do
+  molecule test -s $scenario
+done
+
+# Run quick happy-path tests only
+molecule test -s default
+```
+
+**Test Coverage**:
+- ✅ Script-based and systemd operations
+- ✅ Force-kill fallback mechanism
+- ✅ File monitoring with age-based filtering
+- ✅ Custom return code validation
+- ✅ Start/stop idempotency
+- ✅ Privilege escalation (become)
+- ✅ Retry logic and timeouts
+- ✅ Email notifications and workflow reporting
+
+**See [roles/appname/molecule/README.md](roles/appname/molecule/README.md) for detailed testing documentation.**
+
+### Prerequisites for Testing
+
+```bash
+# Install Molecule and dependencies
+pip install molecule molecule-podman ansible-lint yamllint
+
+# Fedora/RHEL
+sudo dnf install podman
+
+# Ubuntu/Debian
+sudo apt install podman
+```
+
 ## Development
 
 ### Running Linters
@@ -148,6 +190,9 @@ ansible-lint
 
 # Run yamllint
 yamllint .
+
+# Syntax check all playbooks
+ansible-playbook --syntax-check orchestrate.yml
 ```
 
 ### CI/CD
