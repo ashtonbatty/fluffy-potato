@@ -1,0 +1,147 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    # Test 1: Accept rc=1 for start when expected_rc=1
+    - name: Test start with expected_rc=1
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "custom-rc"
+        appname_service_script: "/scripts/custom-rc-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_start_expected_rc: 1  # Accept rc=1 as success
+        appname_start_check_string: "starting with rc=1"
+        appname_running_check_string: "service is running"
+
+    # Test 2: Accept rc=2 for stop when expected_rc=2
+    - name: Test stop with expected_rc=2
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "custom-rc"
+        appname_service_script: "/scripts/custom-rc-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_stop_expected_rc: 2  # Accept rc=2 as success
+        appname_stop_check_string: "stopping with rc=2"
+        appname_stopped_check_string: "service is stopped"
+
+    # Test 3: Accept rc=0 for status (standard)
+    - name: Test status with standard rc=0
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "custom-rc"
+        appname_service_script: "/scripts/custom-rc-service.sh"
+        appname_service_action: "status"
+        appname_email_enabled: false
+        appname_status_expected_rc: 0
+        appname_running_check_string: "service is running"
+        appname_stopped_check_string: "service is stopped"
+
+    # Test 4: Undefined expected_rc - should accept any return code
+    - name: Start custom-rc service for next test
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "custom-rc"
+        appname_service_script: "/scripts/custom-rc-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_start_expected_rc: 1
+        appname_start_check_string: "starting with rc=1"
+        appname_running_check_string: "service is running"
+
+    - name: Test stop with undefined expected_rc (should accept rc=2)
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "custom-rc"
+        appname_service_script: "/scripts/custom-rc-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        # appname_stop_expected_rc not defined - should accept any rc
+        appname_stop_check_string: "stopping with rc=2"
+        appname_stopped_check_string: "service is stopped"
+
+    # Test 5: Mismatch - expect rc=0 but get rc=1 (should fail)
+    - name: Test return code mismatch (expect 0, get 1)
+      block:
+        - name: Attempt start expecting rc=0
+          ansible.builtin.include_role:
+            name: appname
+          vars:
+            appname_service_name: "custom-rc"
+            appname_service_script: "/scripts/custom-rc-service.sh"
+            appname_service_action: "start"
+            appname_email_enabled: false
+            appname_start_expected_rc: 0  # Expect 0 but will get 1
+            appname_start_check_string: "starting with rc=1"
+            appname_running_check_string: "service is running"
+
+        - name: Should have failed on rc mismatch
+          ansible.builtin.fail:
+            msg: "Expected failure when rc=1 but expected_rc=0, but task succeeded"
+
+      rescue:
+        - name: Expected rc mismatch failure occurred
+          ansible.builtin.debug:
+            msg: "Correctly failed when return code didn't match expected_rc"
+
+    # Test 6: Reverse mismatch - expect rc=1 but get rc=0 (should fail)
+    - name: Test return code mismatch (expect 1, get 0)
+      block:
+        - name: Attempt start expecting rc=1
+          ansible.builtin.include_role:
+            name: appname
+          vars:
+            appname_service_name: "standard-rc"
+            appname_service_script: "/scripts/standard-rc-service.sh"
+            appname_service_action: "start"
+            appname_email_enabled: false
+            appname_start_expected_rc: 1  # Expect 1 but will get 0
+            appname_start_check_string: "service started"
+            appname_running_check_string: "service is running"
+
+        - name: Should have failed on rc mismatch
+          ansible.builtin.fail:
+            msg: "Expected failure when rc=0 but expected_rc=1, but task succeeded"
+
+      rescue:
+        - name: Expected rc mismatch failure occurred
+          ansible.builtin.debug:
+            msg: "Correctly failed when return code didn't match expected_rc"
+
+    # Test 7: Null expected_rc - treated as undefined, should accept any rc
+    - name: Start custom-rc for final test
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "custom-rc"
+        appname_service_script: "/scripts/custom-rc-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_start_expected_rc: 1
+        appname_start_check_string: "starting with rc=1"
+        appname_running_check_string: "service is running"
+
+    - name: Test with null expected_rc (should accept any rc)
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "custom-rc"
+        appname_service_script: "/scripts/custom-rc-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_stop_expected_rc: null  # Null treated as undefined
+        appname_stop_check_string: "stopping with rc=2"
+        appname_stopped_check_string: "service is stopped"
+
+    - name: Display return codes test summary
+      ansible.builtin.debug:
+        msg: "Return codes tests completed successfully"

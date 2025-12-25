@@ -1,0 +1,62 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    # Include shared mock infrastructure setup
+    - name: Include shared mock services setup
+      ansible.builtin.include_tasks:
+        file: ../shared/mock_services.yml
+
+    # Create stateful service script
+    - name: Create stateful idempotent service script
+      ansible.builtin.copy:
+        dest: /scripts/idempotent-service.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Stateful service for idempotency testing
+
+          STATE_FILE="/tmp/idempotent-service.state"
+
+          case "$1" in
+            start)
+              if [ -f "$STATE_FILE" ]; then
+                echo "service already running"
+                exit 0
+              fi
+              touch "$STATE_FILE"
+              echo "service started"
+              exit 0
+              ;;
+            stop)
+              if [ ! -f "$STATE_FILE" ]; then
+                echo "service already stopped"
+                exit 0
+              fi
+              rm -f "$STATE_FILE"
+              echo "service stopped"
+              exit 0
+              ;;
+            status)
+              # Always return 0 for successful status check (standard service behavior)
+              if [ -f "$STATE_FILE" ]; then
+                echo "service is running"
+              else
+                echo "service is stopped"
+              fi
+              exit 0
+              ;;
+            *)
+              echo "Usage: $0 {start|stop|status}"
+              exit 1
+              ;;
+          esac
+
+    # Ensure clean state
+    - name: Ensure service is stopped initially
+      ansible.builtin.file:
+        path: /tmp/idempotent-service.state
+        state: absent

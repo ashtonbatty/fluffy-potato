@@ -1,0 +1,22 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Verify stubborn service script exists
+      ansible.builtin.stat:
+        path: /scripts/stubborn-service.sh
+      register: stubborn_script
+      failed_when: not stubborn_script.stat.exists or not stubborn_script.stat.executable
+
+    - name: Verify no stubborn processes remain
+      ansible.builtin.command: pgrep -f "sleep 9999"
+      register: process_check
+      changed_when: false
+      failed_when: process_check.rc == 0  # Should NOT find any processes
+
+    - name: Display force-kill verification results
+      ansible.builtin.debug:
+        msg: "Force-kill scenario verification passed - all processes cleaned up correctly"

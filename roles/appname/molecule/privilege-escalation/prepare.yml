@@ -1,0 +1,76 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    # Include shared mock infrastructure setup
+    - name: Include shared mock services setup
+      ansible.builtin.include_tasks:
+        file: ../shared/mock_services.yml
+
+    # Create a test user for become operations
+    - name: Create test user for privilege escalation
+      ansible.builtin.user:
+        name: testuser
+        state: present
+        create_home: true
+
+    # Create privileged service (only accessible by root)
+    - name: Create privileged service script
+      ansible.builtin.copy:
+        dest: /etc/restricted/privileged-service.sh
+        mode: '0700'
+        owner: root
+        group: root
+        content: |
+          #!/bin/bash
+          # Service requiring root privileges with state tracking
+
+          STATE_FILE="/tmp/privileged-service.state"
+
+          case "$1" in
+            start)
+              echo "running" > "$STATE_FILE"
+              echo "privileged service started"
+              exit 0
+              ;;
+            stop)
+              rm -f "$STATE_FILE"
+              echo "privileged service stopped"
+              exit 0
+              ;;
+            status)
+              if [ -f "$STATE_FILE" ]; then
+                echo "privileged service is running"
+              else
+                echo "privileged service is stopped"
+              fi
+              exit 0
+              ;;
+            *)
+              echo "Usage: $0 {start|stop|status}"
+              exit 1
+              ;;
+          esac
+
+    # Create systemd service for privilege escalation tests
+    - name: Create test systemd service for privilege escalation
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/priv-test.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Privilege Test Service
+
+          [Service]
+          Type=simple
+          ExecStart=/bin/sleep infinity
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true

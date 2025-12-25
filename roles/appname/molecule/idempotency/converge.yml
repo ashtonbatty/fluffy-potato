@@ -1,0 +1,158 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    # Verify initial state is stopped
+    - name: Verify service is initially stopped
+      ansible.builtin.command: /scripts/idempotent-service.sh status
+      register: initial_status
+      changed_when: false
+      failed_when: "'service is stopped' not in initial_status.stdout"
+
+    # Test 1: Start when stopped (should start the service)
+    - name: Test start when service is stopped (should execute)
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "idempotent"
+        appname_service_script: "/scripts/idempotent-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_start_check_string: "service started"
+        appname_running_check_string: "service is running"
+
+    - name: Verify service is now running after start
+      ansible.builtin.command: /scripts/idempotent-service.sh status
+      register: after_start
+      changed_when: false
+      failed_when: "'service is running' not in after_start.stdout"
+
+    # Test 2: Start when already running (idempotency - should skip)
+    - name: Test start when service is already running (should skip)
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "idempotent"
+        appname_service_script: "/scripts/idempotent-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_start_check_string: "service started"
+        appname_running_check_string: "service is running"
+
+    - name: Verify service is still running after second start
+      ansible.builtin.command: /scripts/idempotent-service.sh status
+      register: after_start_2
+      changed_when: false
+      failed_when: "'service is running' not in after_start_2.stdout"
+
+    # Test 3: Stop when running (should stop the service)
+    - name: Test stop when service is running (should execute)
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "idempotent"
+        appname_service_script: "/scripts/idempotent-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_stop_check_string: "service stopped"
+        appname_stopped_check_string: "service is stopped"
+
+    - name: Verify service is now stopped after stop
+      ansible.builtin.command: /scripts/idempotent-service.sh status
+      register: after_stop
+      changed_when: false
+      failed_when: "'service is stopped' not in after_stop.stdout"
+
+    # Test 4: Stop when already stopped (idempotency - should skip)
+    - name: Test stop when service is already stopped (should skip)
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "idempotent"
+        appname_service_script: "/scripts/idempotent-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_stop_check_string: "service stopped"
+        appname_stopped_check_string: "service is stopped"
+
+    - name: Verify service is still stopped after second stop
+      ansible.builtin.command: /scripts/idempotent-service.sh status
+      register: after_stop_2
+      changed_when: false
+      failed_when: "'service is stopped' not in after_stop_2.stdout"
+
+    # Test 5: Full start/stop cycle
+    - name: Full cycle - start from stopped
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "idempotent"
+        appname_service_script: "/scripts/idempotent-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_start_check_string: "service started"
+        appname_running_check_string: "service is running"
+
+    - name: Verify running after cycle start
+      ansible.builtin.command: /scripts/idempotent-service.sh status
+      register: cycle_running
+      changed_when: false
+      failed_when: "'service is running' not in cycle_running.stdout"
+
+    - name: Full cycle - stop from running
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "idempotent"
+        appname_service_script: "/scripts/idempotent-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_stop_check_string: "service stopped"
+        appname_stopped_check_string: "service is stopped"
+
+    - name: Verify stopped after cycle stop
+      ansible.builtin.command: /scripts/idempotent-service.sh status
+      register: cycle_stopped
+      changed_when: false
+      failed_when: "'service is stopped' not in cycle_stopped.stdout"
+
+    # Test 6: Status checks
+    - name: Status check when stopped
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "idempotent"
+        appname_service_script: "/scripts/idempotent-service.sh"
+        appname_service_action: "status"
+        appname_email_enabled: false
+        appname_running_check_string: "service is running"
+        appname_stopped_check_string: "service is stopped"
+
+    - name: Start for final status check
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "idempotent"
+        appname_service_script: "/scripts/idempotent-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_start_check_string: "service started"
+        appname_running_check_string: "service is running"
+
+    - name: Status check when running
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "idempotent"
+        appname_service_script: "/scripts/idempotent-service.sh"
+        appname_service_action: "status"
+        appname_email_enabled: false
+        appname_running_check_string: "service is running"
+        appname_stopped_check_string: "service is stopped"
+
+    - name: Display idempotency test summary
+      ansible.builtin.debug:
+        msg: "Idempotency tests completed successfully - service state transitions work correctly"

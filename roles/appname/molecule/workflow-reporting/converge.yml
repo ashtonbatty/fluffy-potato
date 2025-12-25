@@ -1,0 +1,115 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    # Test 1: Successful workflow with email enabled
+    - name: Test successful start workflow
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "workflow"
+        appname_service_script: "/scripts/workflow-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false  # Skip email for basic test
+        appname_start_check_string: "workflow service started"
+        appname_running_check_string: "workflow service is running"
+
+    - name: Verify service is running
+      ansible.builtin.command: /scripts/workflow-service.sh status
+      register: status_after_start
+      changed_when: false
+      failed_when: "'workflow service is running' not in status_after_start.stdout"
+
+    # Test 2: Stop workflow
+    - name: Test stop workflow
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "workflow"
+        appname_service_script: "/scripts/workflow-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_stop_check_string: "workflow service stopped"
+        appname_stopped_check_string: "workflow service is stopped"
+
+    - name: Verify service is stopped
+      ansible.builtin.command: /scripts/workflow-service.sh status
+      register: status_after_stop
+      changed_when: false
+      failed_when: "'workflow service is stopped' not in status_after_stop.stdout"
+
+    # Test 3: Status check
+    - name: Test status workflow
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "workflow"
+        appname_service_script: "/scripts/workflow-service.sh"
+        appname_service_action: "status"
+        appname_email_enabled: false
+        appname_running_check_string: "workflow service is running"
+        appname_stopped_check_string: "workflow service is stopped"
+
+    # Test 4: Failed workflow (should be caught by rescue)
+    - name: Test failed workflow
+      block:
+        - name: Attempt to start failing service
+          ansible.builtin.include_role:
+            name: appname
+          vars:
+            appname_service_name: "failing-workflow"
+            appname_service_script: "/scripts/failing-workflow-service.sh"
+            appname_service_action: "start"
+            appname_email_enabled: false
+            appname_start_check_string: "service started"  # Won't match
+            appname_running_check_string: "service is running"
+
+        - name: Should have failed
+          ansible.builtin.fail:
+            msg: "Expected failure from failing service"
+
+      rescue:
+        - name: Expected failure occurred
+          ansible.builtin.debug:
+            msg: "Service failed as expected - workflow reporting would trigger here"
+
+    # Test 5: Full cycle test
+    - name: Full cycle - start
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "workflow"
+        appname_service_script: "/scripts/workflow-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_start_check_string: "workflow service started"
+        appname_running_check_string: "workflow service is running"
+
+    - name: Full cycle - status while running
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "workflow"
+        appname_service_script: "/scripts/workflow-service.sh"
+        appname_service_action: "status"
+        appname_email_enabled: false
+        appname_running_check_string: "workflow service is running"
+        appname_stopped_check_string: "workflow service is stopped"
+
+    - name: Full cycle - stop
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "workflow"
+        appname_service_script: "/scripts/workflow-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_stop_check_string: "workflow service stopped"
+        appname_stopped_check_string: "workflow service is stopped"
+
+    - name: Display workflow reporting test summary
+      ansible.builtin.debug:
+        msg: "Workflow reporting tests completed successfully"

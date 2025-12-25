@@ -1,0 +1,16 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Verify queue service script exists
+      ansible.builtin.stat:
+        path: /scripts/queue-service.sh
+      register: queue_script
+      failed_when: not queue_script.stat.exists or not queue_script.stat.executable
+
+    - name: Display file monitoring verification results
+      ansible.builtin.debug:
+        msg: "File monitoring scenario verification passed - all test cases executed correctly"

@@ -1,0 +1,99 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    # Test 1: Service status becomes "running" after 4 checks (should succeed with enough retries)
+    - name: Test eventual success after status check retries
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "retry"
+        appname_service_script: "/scripts/retry-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_start_retries: 5  # Enough retries for status to succeed (needs 4 checks)
+        appname_retry_delay: 1
+        appname_start_check_string: "service started"
+        appname_running_check_string: "service is running"
+
+    - name: Verify retry counter shows 4+ attempts
+      ansible.builtin.command: cat /tmp/retry-counter
+      register: counter
+      changed_when: false
+      failed_when: counter.stdout | int < 4
+
+    # Cleanup for next test
+    - name: Cleanup retry test state
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/retry-service.state
+        - /tmp/retry-counter
+
+    # Test 2: Service that always fails (all retries exhausted - should fail)
+    - name: Test retry exhaustion with failing service
+      block:
+        - name: Attempt to start failing service
+          ansible.builtin.include_role:
+            name: appname
+          vars:
+            appname_service_name: "failing"
+            appname_service_script: "/scripts/failing-service.sh"
+            appname_service_action: "start"
+            appname_email_enabled: false
+            appname_start_retries: 2
+            appname_retry_delay: 1
+            appname_start_check_string: "service failing"
+            appname_running_check_string: "service is running"
+
+        - name: Should have failed after retry exhaustion
+          ansible.builtin.fail:
+            msg: "Expected failure after all retries exhausted, but task succeeded"
+
+      rescue:
+        - name: Expected retry exhaustion failure occurred
+          ansible.builtin.debug:
+            msg: "Correctly failed when all retries were exhausted"
+
+    # Test 3: Stop operation (should succeed immediately)
+    - name: Cleanup before stop test
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/retry-service.state
+        - /tmp/retry-counter
+
+    - name: Start service for stop test
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "retry"
+        appname_service_script: "/scripts/retry-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_start_retries: 5
+        appname_retry_delay: 1
+        appname_start_check_string: "service started"
+        appname_running_check_string: "service is running"
+
+    - name: Test stop with immediate success
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "retry"
+        appname_service_script: "/scripts/retry-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_stop_retries: 3
+        appname_retry_delay: 1
+        appname_stop_check_string: "service stopped"
+        appname_stopped_check_string: "service stopped"
+
+    - name: Display retry logic test summary
+      ansible.builtin.debug:
+        msg: "Retry logic tests completed successfully"

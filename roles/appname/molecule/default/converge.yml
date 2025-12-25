@@ -1,4 +1,19 @@
 ---
+# Default Scenario: Happy-Path Testing
+#
+# This scenario tests basic, successful operations for both script-based
+# and systemd service management. It verifies that the core functionality
+# works correctly under normal conditions.
+#
+# For edge cases and failure scenarios, see the dedicated test scenarios:
+#   - force-kill: Force-kill fallback when graceful shutdown fails
+#   - file-monitoring: Age-based queue monitoring with timeouts
+#   - return-codes: Custom return code validation
+#   - idempotency: Start/stop idempotency checks
+#   - privilege-escalation: Become configuration testing
+#   - retry-logic: Retry exhaustion and eventual success
+#   - workflow-reporting: Email notifications with mock SMTP
+
 - name: Converge
   hosts: all
   become: true
@@ -63,7 +78,12 @@
         daemon_reload: true
 
   tasks:
-    # Test 1: Script-based service operations
+    # ========================================
+    # Happy-Path Test Cases
+    # ========================================
+
+    # Test 1: Script-based service - status check
+    # Verifies basic script execution with output validation
     - name: Test script-based service - status
       ansible.builtin.include_role:
         name: appname
@@ -73,7 +93,8 @@
         appname_service_action: "status"
         appname_email_enabled: false
 
-    # Test 2: Systemd service operations
+    # Test 2: Systemd service - full lifecycle (start → status → stop)
+    # Verifies systemd integration and state transitions
     - name: Test systemd service - start
       ansible.builtin.include_role:
         name: appname

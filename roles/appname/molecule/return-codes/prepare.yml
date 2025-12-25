@@ -1,0 +1,83 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    # Include shared mock infrastructure setup
+    - name: Include shared mock services setup
+      ansible.builtin.include_tasks:
+        file: ../shared/mock_services.yml
+
+    # Create service with custom return codes and state tracking
+    - name: Create custom return code service script
+      ansible.builtin.copy:
+        dest: /scripts/custom-rc-service.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Service with non-zero success return codes for testing
+
+          STATE_FILE="/tmp/custom-rc-service.state"
+
+          case "$1" in
+            start)
+              touch "$STATE_FILE"
+              echo "starting with rc=1"
+              exit 1  # Non-standard success code
+              ;;
+            stop)
+              rm -f "$STATE_FILE"
+              echo "stopping with rc=2"
+              exit 2  # Non-standard success code
+              ;;
+            status)
+              if [ -f "$STATE_FILE" ]; then
+                echo "service is running"
+              else
+                echo "service is stopped"
+              fi
+              exit 0
+              ;;
+            *)
+              echo "Usage: $0 {start|stop|status}"
+              exit 1
+              ;;
+          esac
+
+    # Create service that returns standard codes (for mismatch tests)
+    - name: Create standard return code service script
+      ansible.builtin.copy:
+        dest: /scripts/standard-rc-service.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Service with standard return codes and state tracking
+
+          STATE_FILE="/tmp/standard-rc-service.state"
+
+          case "$1" in
+            start)
+              touch "$STATE_FILE"
+              echo "service started"
+              exit 0
+              ;;
+            stop)
+              rm -f "$STATE_FILE"
+              echo "service stopped"
+              exit 0
+              ;;
+            status)
+              if [ -f "$STATE_FILE" ]; then
+                echo "service is running"
+              else
+                echo "service is stopped"
+              fi
+              exit 0
+              ;;
+            *)
+              echo "Usage: $0 {start|stop|status}"
+              exit 1
+              ;;
+          esac

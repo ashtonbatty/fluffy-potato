@@ -1,41 +1,33 @@
 ---
+# Base Molecule configuration shared across all scenarios
+# Individual scenarios can override or extend these settings
+
 dependency:
   name: galaxy
+
 driver:
   name: podman
+
 platforms:
   - name: instance
-    image: docker.io/geerlingguy/docker-fedora40-ansible:latest
+    image: quay.io/fedora/fedora:latest
     pre_build_image: true
-    command: ""
+    command: /usr/sbin/init
     systemd: always
     privileged: true
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
     cgroupns_mode: host
+
 provisioner:
   name: ansible
-  options:
-    v: true
   config_options:
     defaults:
       callbacks_enabled: profile_tasks
-      roles_path: "${MOLECULE_PROJECT_DIRECTORY}/..:${ANSIBLE_ROLES_PATH}"
   inventory:
     host_vars:
       instance:
         ansible_python_interpreter: /usr/bin/python3
+
 verifier:
   name: ansible
-scenario:
-  test_sequence:
-    - dependency
-    - cleanup
-    - destroy
-    - syntax
-    - create
-    - prepare
-    - converge
-    - verify
-    - cleanup
-    - destroy

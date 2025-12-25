@@ -1,0 +1,29 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Verify privileged service script exists
+      ansible.builtin.stat:
+        path: /etc/restricted/privileged-service.sh
+      register: priv_script
+      failed_when: not priv_script.stat.exists or not priv_script.stat.executable
+
+    - name: Verify script has correct permissions (root only)
+      ansible.builtin.assert:
+        that:
+          - priv_script.stat.mode == '0700'
+          - priv_script.stat.pw_name == 'root'
+        fail_msg: "Privileged script should be mode 0700 and owned by root"
+
+    - name: Verify systemd service is defined
+      ansible.builtin.systemd:
+        name: priv-test
+      register: systemd_service
+      failed_when: systemd_service.status.LoadState != "loaded"
+
+    - name: Display privilege escalation verification results
+      ansible.builtin.debug:
+        msg: "Privilege escalation scenario verification passed - become configuration working correctly"

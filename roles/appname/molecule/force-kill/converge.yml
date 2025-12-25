@@ -1,0 +1,143 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    # Test 1: Start the stubborn service
+    - name: Test stubborn service - start
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "stubborn"
+        appname_service_script: "/scripts/stubborn-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_start_check_string: "started stubborn service"
+        appname_running_check_string: "stubborn service is running"
+
+    # Verify service started
+    - name: Verify stubborn service is running
+      ansible.builtin.command: pgrep -f "sleep 9999"
+      register: service_check
+      changed_when: false
+      failed_when: service_check.rc != 0
+
+    # Test 2: Attempt graceful stop (will fail, trigger force-kill)
+    - name: Test stubborn service - stop with force-kill fallback
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "stubborn"
+        appname_service_script: "/scripts/stubborn-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_stop_check_string: "ignoring stop request"
+        appname_stopped_check_string: "stubborn service is stopped"
+        appname_stop_retries: 2  # Reduce retries for faster test
+        appname_retry_delay: 1
+        appname_allow_force_kill: true
+        appname_process_identifier: "sleep 9999"  # >= 5 chars for validation
+
+    # Test 3: Verify process was killed
+    - name: Verify stubborn service was force-killed
+      ansible.builtin.command: pgrep -f "sleep 9999"
+      register: killed_check
+      changed_when: false
+      failed_when: killed_check.rc == 0  # Should fail if process still exists
+
+    # Test 4: Test force-kill disabled safety check
+    - name: Start stubborn service again for safety check test
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "stubborn"
+        appname_service_script: "/scripts/stubborn-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_start_check_string: "started stubborn service"
+        appname_running_check_string: "stubborn service is running"
+
+    # Test 5: Attempt stop with force-kill disabled (should fail)
+    - name: Test stubborn service - stop with force-kill disabled
+      block:
+        - name: Attempt stop with allow_force_kill=false
+          ansible.builtin.include_role:
+            name: appname
+          vars:
+            appname_service_name: "stubborn"
+            appname_service_script: "/scripts/stubborn-service.sh"
+            appname_service_action: "stop"
+            appname_email_enabled: false
+            appname_stop_check_string: "ignoring stop request"
+            appname_stopped_check_string: "stubborn service is stopped"
+            appname_stop_retries: 2
+            appname_retry_delay: 1
+            appname_allow_force_kill: false  # Disable force-kill
+            appname_process_identifier: "sleep 9999"
+
+        - name: Force-kill disabled should have failed
+          ansible.builtin.fail:
+            msg: "Expected failure when force-kill is disabled, but task succeeded"
+
+      rescue:
+        - name: Expected failure occurred
+          ansible.builtin.debug:
+            msg: "Correctly failed when graceful stop failed and force-kill disabled"
+
+    # Cleanup: Force-kill the remaining process for next test
+    # Use regex pattern slee[p] to avoid self-matching
+    - name: Cleanup - kill remaining stubborn process
+      ansible.builtin.shell: |
+        for pid in $(pgrep -f 'slee[p] 9999' 2>/dev/null); do
+          kill -9 "$pid" 2>/dev/null || true
+        done
+        exit 0
+      changed_when: false
+
+    # Test 6: Process identifier validation (too short)
+    - name: Start stubborn service for identifier validation test
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "stubborn"
+        appname_service_script: "/scripts/stubborn-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_start_check_string: "started stubborn service"
+        appname_running_check_string: "stubborn service is running"
+
+    - name: Test process identifier too short (should fail validation)
+      block:
+        - name: Attempt stop with short process identifier
+          ansible.builtin.include_role:
+            name: appname
+          vars:
+            appname_service_name: "stubborn"
+            appname_service_script: "/scripts/stubborn-service.sh"
+            appname_service_action: "stop"
+            appname_email_enabled: false
+            appname_stop_retries: 2
+            appname_retry_delay: 1
+            appname_allow_force_kill: true
+            appname_process_identifier: "test"  # Only 4 chars - should fail validation
+
+        - name: Short identifier should have failed validation
+          ansible.builtin.fail:
+            msg: "Expected failure for process identifier < 5 chars, but task succeeded"
+
+      rescue:
+        - name: Expected validation failure occurred
+          ansible.builtin.debug:
+            msg: "Correctly failed validation for process identifier < 5 characters"
+
+    # Final cleanup
+    # Use regex pattern slee[p] to avoid self-matching
+    - name: Final cleanup - ensure all test processes killed
+      ansible.builtin.shell: |
+        for pid in $(pgrep -f 'slee[p] 9999' 2>/dev/null); do
+          kill -9 "$pid" 2>/dev/null || true
+        done
+        exit 0
+      changed_when: false

@@ -1,0 +1,47 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    # Include shared mock infrastructure setup
+    - name: Include shared mock services setup
+      ansible.builtin.include_tasks:
+        file: ../shared/mock_services.yml
+
+    # Create a simple service for file monitoring tests
+    - name: Create queue service script
+      ansible.builtin.copy:
+        dest: /scripts/queue-service.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Simple service for file monitoring tests with state tracking
+
+          STATE_FILE="/tmp/queue-service.state"
+
+          case "$1" in
+            start)
+              echo "running" > "$STATE_FILE"
+              echo "queue service started"
+              exit 0
+              ;;
+            stop)
+              echo "stopped" > "$STATE_FILE"
+              echo "queue service stopped"
+              exit 0
+              ;;
+            status)
+              if [ -f "$STATE_FILE" ] && grep -q "running" "$STATE_FILE"; then
+                echo "queue service is running"
+              else
+                echo "queue service is stopped"
+              fi
+              exit 0
+              ;;
+            *)
+              echo "Usage: $0 {start|stop|status}"
+              exit 1
+              ;;
+          esac

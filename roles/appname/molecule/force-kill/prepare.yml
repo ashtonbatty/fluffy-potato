@@ -1,0 +1,51 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    # Include shared mock infrastructure setup
+    - name: Include shared mock services setup
+      ansible.builtin.include_tasks:
+        file: ../shared/mock_services.yml
+
+    # Create stubborn service that ignores graceful shutdown
+    - name: Create stubborn service script
+      ansible.builtin.copy:
+        dest: /scripts/stubborn-service.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Stubborn service that ignores SIGTERM for force-kill testing
+
+          # Ignore SIGTERM signal (graceful shutdown)
+          trap "" SIGTERM
+
+          case "$1" in
+            start)
+              # Start a long-running background process
+              nohup sleep 9999 >/dev/null 2>&1 &
+              echo "started stubborn service"
+              exit 0
+              ;;
+            stop)
+              # Pretend to stop but don't actually stop the process
+              echo "ignoring stop request"
+              exit 0
+              ;;
+            status)
+              # Check if process is actually running
+              # Always return 0 for successful status check (standard service behavior)
+              if pgrep -f "sleep 9999" > /dev/null; then
+                echo "stubborn service is running"
+              else
+                echo "stubborn service is stopped"
+              fi
+              exit 0
+              ;;
+            *)
+              echo "Usage: $0 {start|stop|status}"
+              exit 1
+              ;;
+          esac

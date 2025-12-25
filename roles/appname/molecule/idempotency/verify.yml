@@ -1,0 +1,16 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Verify idempotent service script exists
+      ansible.builtin.stat:
+        path: /scripts/idempotent-service.sh
+      register: idempotent_script
+      failed_when: not idempotent_script.stat.exists or not idempotent_script.stat.executable
+
+    - name: Display idempotency verification results
+      ansible.builtin.debug:
+        msg: "Idempotency scenario verification passed - start/stop operations are correctly idempotent"

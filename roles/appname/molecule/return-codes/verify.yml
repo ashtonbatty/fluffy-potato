@@ -1,0 +1,22 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Verify custom RC service script exists
+      ansible.builtin.stat:
+        path: /scripts/custom-rc-service.sh
+      register: custom_script
+      failed_when: not custom_script.stat.exists or not custom_script.stat.executable
+
+    - name: Verify standard RC service script exists
+      ansible.builtin.stat:
+        path: /scripts/standard-rc-service.sh
+      register: standard_script
+      failed_when: not standard_script.stat.exists or not standard_script.stat.executable
+
+    - name: Display return codes verification results
+      ansible.builtin.debug:
+        msg: "Return codes scenario verification passed - custom RC validation working correctly"

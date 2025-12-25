@@ -1,0 +1,22 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Verify retry service script exists
+      ansible.builtin.stat:
+        path: /scripts/retry-service.sh
+      register: retry_script
+      failed_when: not retry_script.stat.exists or not retry_script.stat.executable
+
+    - name: Verify failing service script exists
+      ansible.builtin.stat:
+        path: /scripts/failing-service.sh
+      register: failing_script
+      failed_when: not failing_script.stat.exists or not failing_script.stat.executable
+
+    - name: Display retry logic verification results
+      ansible.builtin.debug:
+        msg: "Retry logic scenario verification passed - retry counts and delays working correctly"

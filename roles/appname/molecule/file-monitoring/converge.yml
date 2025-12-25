@@ -1,0 +1,165 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    # Test 1: File monitoring disabled (should skip entirely)
+    - name: Test file monitoring disabled
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "queue"
+        appname_service_script: "/scripts/queue-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_file_monitor_enabled: false  # Disabled - block should be skipped
+        appname_stop_check_string: "queue service stopped"
+        appname_stopped_check_string: "queue service is stopped"
+
+    # Test 2: Empty directory (should succeed immediately)
+    - name: Ensure queue directory is empty
+      ansible.builtin.file:
+        path: /var/queue/
+        state: absent
+
+    - name: Recreate empty queue directory
+      ansible.builtin.file:
+        path: /var/queue
+        state: directory
+        mode: '0755'
+
+    - name: Test file monitoring with empty directory
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "queue"
+        appname_service_script: "/scripts/queue-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_file_monitor_enabled: true
+        appname_file_monitor_path: "/var/queue"
+        appname_file_monitor_pattern: "*.dat"
+        appname_file_monitor_timeout: 30
+        appname_file_monitor_check_interval: 2
+        appname_stop_check_string: "queue service stopped"
+        appname_stopped_check_string: "queue service is stopped"
+
+    # Test 3: Old files (beyond grace period) - should be ignored during monitoring
+    - name: Create old stuck file (beyond grace period)
+      ansible.builtin.shell: |
+        touch /var/queue/old-stuck.dat
+        touch -d "2 hours ago" /var/queue/old-stuck.dat
+      changed_when: true
+
+    - name: Test file monitoring ignores old files
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "queue"
+        appname_service_script: "/scripts/queue-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_file_monitor_enabled: true
+        appname_file_monitor_path: "/var/queue"
+        appname_file_monitor_pattern: "*.dat"
+        appname_file_monitor_timeout: 30
+        appname_file_monitor_check_interval: 2
+        appname_file_monitor_grace: "1h"  # Files older than 1 hour ignored
+        appname_stop_check_string: "queue service stopped"
+        appname_stopped_check_string: "queue service is stopped"
+
+    # Test 4: Recent file deleted during monitoring (success case)
+    - name: Create recent stuck file
+      ansible.builtin.file:
+        path: /var/queue/recent-will-delete.dat
+        state: touch
+        mode: '0644'
+
+    - name: Test file monitoring with file deletion during wait
+      block:
+        # Start background process that will delete the file after 3 seconds
+        - name: Start background file deletion (simulates file being processed)
+          ansible.builtin.shell: |
+            nohup sh -c 'sleep 3 && rm -f /var/queue/recent-will-delete.dat' &
+          changed_when: true
+
+        # Run the role synchronously - it will wait and the file will be deleted
+        - name: Include role with file monitoring (file will be deleted during wait)
+          ansible.builtin.include_role:
+            name: appname
+          vars:
+            appname_service_name: "queue"
+            appname_service_script: "/scripts/queue-service.sh"
+            appname_service_action: "stop"
+            appname_email_enabled: false
+            appname_file_monitor_enabled: true
+            appname_file_monitor_path: "/var/queue"
+            appname_file_monitor_pattern: "recent-will-delete.dat"
+            appname_file_monitor_timeout: 20
+            appname_file_monitor_check_interval: 2
+            appname_file_monitor_grace: "1h"
+            appname_stop_check_string: "queue service stopped"
+            appname_stopped_check_string: "queue service is stopped"
+
+    # Test 5: Timeout with fail_on_timeout=true (should fail)
+    - name: Create recent stuck file that won't be deleted
+      ansible.builtin.file:
+        path: /var/queue/stuck-forever.dat
+        state: touch
+        mode: '0644'
+
+    - name: Test file monitoring timeout with fail_on_timeout=true
+      block:
+        - name: Include role with short timeout
+          ansible.builtin.include_role:
+            name: appname
+          vars:
+            appname_service_name: "queue"
+            appname_service_script: "/scripts/queue-service.sh"
+            appname_service_action: "stop"
+            appname_email_enabled: false
+            appname_file_monitor_enabled: true
+            appname_file_monitor_path: "/var/queue"
+            appname_file_monitor_pattern: "stuck-forever.dat"
+            appname_file_monitor_timeout: 5  # Short timeout
+            appname_file_monitor_check_interval: 1
+            appname_file_monitor_grace: "1h"
+            appname_file_monitor_fail_on_timeout: true  # Should fail
+            appname_stop_check_string: "queue service stopped"
+            appname_stopped_check_string: "queue service is stopped"
+
+        - name: Should have failed on timeout
+          ansible.builtin.fail:
+            msg: "Expected failure on timeout with fail_on_timeout=true, but task succeeded"
+
+      rescue:
+        - name: Expected timeout failure occurred
+          ansible.builtin.debug:
+            msg: "Correctly failed when files remained after timeout"
+
+    # Test 6: Timeout with fail_on_timeout=false (should warn but continue)
+    - name: Test file monitoring timeout with fail_on_timeout=false
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "queue"
+        appname_service_script: "/scripts/queue-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_file_monitor_enabled: true
+        appname_file_monitor_path: "/var/queue"
+        appname_file_monitor_pattern: "stuck-forever.dat"
+        appname_file_monitor_timeout: 5  # Short timeout
+        appname_file_monitor_check_interval: 1
+        appname_file_monitor_grace: "1h"
+        appname_file_monitor_fail_on_timeout: false  # Should warn but continue
+        appname_stop_check_string: "queue service stopped"
+        appname_stopped_check_string: "queue service is stopped"
+
+    # Cleanup
+    - name: Cleanup test files
+      ansible.builtin.file:
+        path: /var/queue/
+        state: absent

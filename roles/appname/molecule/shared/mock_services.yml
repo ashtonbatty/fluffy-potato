@@ -1,0 +1,33 @@
+---
+# Shared mock services and common setup tasks for Molecule scenarios
+# This file provides reusable tasks that can be included in scenario prepare.yml files
+
+# Common package installation
+- name: Install required packages for testing
+  ansible.builtin.package:
+    name:
+      - python3
+      - systemd
+      - procps-ng  # For pgrep/pkill
+    state: present
+
+# Create standard test directories
+- name: Create test script directory
+  ansible.builtin.file:
+    path: /scripts
+    state: directory
+    mode: '0755'
+
+- name: Create test queue directory
+  ansible.builtin.file:
+    path: /var/queue
+    state: directory
+    mode: '0755'
+
+- name: Create restricted directory for privilege tests
+  ansible.builtin.file:
+    path: /etc/restricted
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root

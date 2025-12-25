@@ -1,0 +1,124 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    # Test 1: Script-based operation without become (should fail permission check)
+    - name: Test script without become - should fail permission check
+      block:
+        - name: Attempt to use privileged script without become
+          ansible.builtin.include_role:
+            name: appname
+          vars:
+            appname_service_name: "privileged"
+            appname_service_script: "/etc/restricted/privileged-service.sh"
+            appname_service_action: "status"
+            appname_email_enabled: false
+            appname_service_become: false  # No privilege escalation
+
+        - name: Should have failed permission check
+          ansible.builtin.fail:
+            msg: "Expected failure accessing privileged script without become, but succeeded"
+
+      rescue:
+        - name: Expected permission failure occurred
+          ansible.builtin.debug:
+            msg: "Correctly failed when accessing privileged script without become"
+
+    # Test 2: Script-based operation with become (should succeed)
+    - name: Test script with become - should succeed
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "privileged"
+        appname_service_script: "/etc/restricted/privileged-service.sh"
+        appname_service_action: "status"
+        appname_email_enabled: false
+        appname_service_become: true  # Enable privilege escalation
+        appname_service_become_user: "root"
+        appname_running_check_string: "privileged service is running"
+        appname_stopped_check_string: "privileged service is stopped"
+
+    # Test 3: Systemd service with become
+    - name: Test systemd service start with become
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "priv-test"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_service_become: true
+        appname_service_become_user: "root"
+
+    # Test 4: Verify systemd service started
+    - name: Verify systemd service is active
+      ansible.builtin.systemd:
+        name: priv-test
+      register: service_status
+      failed_when: service_status.status.ActiveState != "active"
+
+    # Test 5: Stop systemd service with become
+    - name: Test systemd service stop with become
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "priv-test"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_service_become: true
+        appname_service_become_user: "root"
+
+    # Test 6: Custom become flags
+    - name: Test with custom become flags
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "privileged"
+        appname_service_script: "/etc/restricted/privileged-service.sh"
+        appname_service_action: "start"
+        appname_email_enabled: false
+        appname_service_become: true
+        appname_service_become_user: "root"
+        appname_service_become_flags: ""  # Empty flags is valid
+        appname_start_check_string: "privileged service started"
+        appname_running_check_string: "privileged service is running"
+
+    # Test 7: Script validation also uses become
+    - name: Test script validation with become
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "privileged"
+        appname_service_script: "/etc/restricted/privileged-service.sh"
+        appname_service_action: "stop"
+        appname_email_enabled: false
+        appname_service_become: true
+        appname_service_become_user: "root"
+        appname_stop_check_string: "privileged service stopped"
+        appname_stopped_check_string: "privileged service is stopped"
+
+    # Test 8: Both script-based and systemd use same become variables
+    - name: Test consistency - script-based with become
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "privileged"
+        appname_service_script: "/etc/restricted/privileged-service.sh"
+        appname_service_action: "status"
+        appname_email_enabled: false
+        appname_service_become: true
+        appname_service_become_user: "root"
+        appname_running_check_string: "privileged service is running"
+        appname_stopped_check_string: "privileged service is stopped"
+
+    - name: Test consistency - systemd with become
+      ansible.builtin.include_role:
+        name: appname
+      vars:
+        appname_service_name: "priv-test"
+        appname_service_action: "status"
+        appname_email_enabled: false
+        appname_service_become: true
+        appname_service_become_user: "root"

@@ -1,0 +1,108 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    # Include shared mock infrastructure setup
+    - name: Include shared mock services setup
+      ansible.builtin.include_tasks:
+        file: ../shared/mock_services.yml
+
+    # Create eventually-consistent service - status takes time to become ready
+    # This tests the role's retry logic on status verification
+    - name: Create eventually-consistent service script
+      ansible.builtin.copy:
+        dest: /scripts/retry-service.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Eventually-consistent service for retry testing
+          # Start always succeeds, but status takes 3 checks to show "running"
+
+          STATE_FILE="/tmp/retry-service.state"
+          COUNTER_FILE="/tmp/retry-counter"
+
+          case "$1" in
+            start)
+              # Start always succeeds immediately
+              touch "$STATE_FILE"
+              # Reset the status check counter
+              echo "0" > "$COUNTER_FILE"
+              echo "service started"
+              exit 0
+              ;;
+            stop)
+              # Stop is always immediate
+              rm -f "$STATE_FILE" "$COUNTER_FILE"
+              echo "service stopped"
+              exit 0
+              ;;
+            status)
+              # If state file doesn't exist, service is stopped
+              if [ ! -f "$STATE_FILE" ]; then
+                echo "service stopped"
+                exit 0
+              fi
+
+              # Increment check counter for eventual consistency
+              if [ -f "$COUNTER_FILE" ]; then
+                count=$(cat "$COUNTER_FILE")
+              else
+                count=0
+              fi
+              count=$((count + 1))
+              echo "$count" > "$COUNTER_FILE"
+
+              # Succeed on 4th status check (simulates eventual consistency)
+              if [ "$count" -ge 4 ]; then
+                echo "service is running"
+                exit 0
+              else
+                echo "service is starting (check $count)"
+                exit 0  # Return 0 - role checks stdout not rc
+              fi
+              ;;
+            *)
+              echo "Usage: $0 {start|stop|status}"
+              exit 1
+              ;;
+          esac
+
+    # Create service that never succeeds (for timeout testing)
+    - name: Create always-failing service script
+      ansible.builtin.copy:
+        dest: /scripts/failing-service.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Service that always fails for timeout testing
+
+          case "$1" in
+            start)
+              echo "service failing to start"
+              exit 1
+              ;;
+            stop)
+              echo "service stopped"
+              exit 0
+              ;;
+            status)
+              echo "service not running"
+              exit 1
+              ;;
+            *)
+              echo "Usage: $0 {start|stop|status}"
+              exit 1
+              ;;
+          esac
+
+    # Ensure clean state
+    - name: Ensure clean state for retry tests
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/retry-service.state
+        - /tmp/retry-counter

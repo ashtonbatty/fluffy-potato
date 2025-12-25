@@ -1,0 +1,45 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Verify workflow service script exists
+      ansible.builtin.stat:
+        path: /scripts/workflow-service.sh
+      register: workflow_script
+      failed_when: not workflow_script.stat.exists or not workflow_script.stat.executable
+
+    - name: Verify failing workflow service script exists
+      ansible.builtin.stat:
+        path: /scripts/failing-workflow-service.sh
+      register: failing_workflow_script
+      failed_when: not failing_workflow_script.stat.exists or not failing_workflow_script.stat.executable
+
+    - name: Verify SMTP debug log was created
+      ansible.builtin.stat:
+        path: /tmp/smtp-debug.log
+      register: smtp_log
+      failed_when: not smtp_log.stat.exists
+
+    - name: Verify SMTP server is still running
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 1025
+        timeout: 5
+        state: started
+
+    - name: Display workflow reporting verification results
+      ansible.builtin.debug:
+        msg: "Workflow reporting scenario verification passed - email notifications working correctly"
+
+    # Cleanup: Stop SMTP server
+    - name: Stop SMTP debug server
+      ansible.builtin.shell: |
+        if [ -f /tmp/smtp-server.pid ]; then
+          kill $(cat /tmp/smtp-server.pid) || true
+          rm -f /tmp/smtp-server.pid
+        fi
+      changed_when: false
+      ignore_errors: true

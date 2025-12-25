@@ -1,0 +1,104 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    # Include shared mock infrastructure setup
+    - name: Include shared mock services setup
+      ansible.builtin.include_tasks:
+        file: ../shared/mock_services.yml
+
+    # Install Python SMTP debug server
+    - name: Install Python for SMTP mock server
+      ansible.builtin.package:
+        name:
+          - python3
+          - python3-pip
+        state: present
+
+    - name: Install aiosmtpd for mock SMTP server
+      ansible.builtin.pip:
+        name: aiosmtpd
+        state: present
+
+    # Start mock SMTP server
+    - name: Start mock SMTP debug server
+      ansible.builtin.shell: |
+        nohup python3 -m aiosmtpd -n -l 127.0.0.1:1025 > /tmp/smtp-debug.log 2>&1 &
+        echo $! > /tmp/smtp-server.pid
+      args:
+        creates: /tmp/smtp-server.pid
+      changed_when: true
+
+    - name: Wait for SMTP server to start
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 1025
+        timeout: 30
+        state: started
+
+    # Create simple test service with state tracking
+    - name: Create test service for workflow reporting
+      ansible.builtin.copy:
+        dest: /scripts/workflow-service.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Simple service for workflow reporting tests
+
+          STATE_FILE="/tmp/workflow-service.state"
+
+          case "$1" in
+            start)
+              touch "$STATE_FILE"
+              echo "workflow service started"
+              exit 0
+              ;;
+            stop)
+              rm -f "$STATE_FILE"
+              echo "workflow service stopped"
+              exit 0
+              ;;
+            status)
+              if [ -f "$STATE_FILE" ]; then
+                echo "workflow service is running"
+              else
+                echo "workflow service is stopped"
+              fi
+              exit 0
+              ;;
+            *)
+              echo "Usage: $0 {start|stop|status}"
+              exit 1
+              ;;
+          esac
+
+    # Create a service that will fail (for failure reporting test)
+    - name: Create failing service for failure reporting test
+      ansible.builtin.copy:
+        dest: /scripts/failing-workflow-service.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Service that fails for testing failure reporting
+
+          case "$1" in
+            start)
+              echo "service start failed"
+              exit 1
+              ;;
+            stop)
+              echo "service stopped"
+              exit 0
+              ;;
+            status)
+              echo "service not running"
+              exit 1
+              ;;
+            *)
+              echo "Usage: $0 {start|stop|status}"
+              exit 1
+              ;;
+          esac
