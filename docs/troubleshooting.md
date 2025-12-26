@@ -8,7 +8,7 @@ Check the stop check string matches your script output:
 # Should output something containing "stopping"
 ```
 
-Adjust `appname_stop_check_string` in vars file if needed.
+Adjust `appname_stop_check_string` in `inventory/group_vars/<service>_servers.yml` if needed.
 
 ### Return code validation failing
 
@@ -23,7 +23,7 @@ Verify `appname_process_identifier` matches your running process:
 ps aux | grep "COMPONENT=foo"
 ```
 
-Adjust `appname_process_identifier` in vars file if needed.
+Adjust `appname_process_identifier` in `inventory/group_vars/<service>_servers.yml` if needed.
 
 **IMPORTANT - Test Process Kill Patterns Before Production:**
 
@@ -62,4 +62,28 @@ If you see an assertion failure about force kill being disabled:
 If you see a validation error about process identifier length:
 - Use a more specific identifier (>= 5 characters)
 - Example: "COMPONENT=foo" instead of "foo"
+
+### Where should I put this configuration variable?
+
+Use this decision tree to determine the right location for your variable:
+
+**Is it the same for ALL services across ALL environments?**
+- ✅ Yes → Put in `inventory/group_vars/all.yml`
+- Examples: Email settings, SMTP configuration, global privilege escalation
+
+**Is it specific to an infrastructure tier (app, database, etc.)?**
+- ✅ Yes → Put in `inventory/group_vars/<tier>_tier.yml`
+- Examples: `appname_script_timeout: 600` for database tier (db_segs_tier.yml)
+
+**Is it specific to ONE service only?**
+- ✅ Yes → Put in `inventory/group_vars/<service>_servers.yml`
+- Examples: `appname_service_script`, `appname_process_identifier`, `appname_service_name`
+
+**Is it a one-time override for testing?**
+- ✅ Yes → Use command-line extra vars: `-e "appname_allow_force_kill=false"`
+- Don't commit these to group_vars files
+
+**Still not sure?**
+- See the [Variable Precedence Example](architecture.md#practical-variable-precedence-example) in architecture.md
+- Remember: More specific locations (service > tier > all) override less specific ones
 

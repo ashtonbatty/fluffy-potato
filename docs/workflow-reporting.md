@@ -61,7 +61,11 @@ During service stop operations, you can configure the framework to wait for spec
 
 ### Configuration Example
 
+Place these settings in `inventory/group_vars/all.yml` for global configuration (applies to all services):
+
 ```yaml
+# inventory/group_vars/all.yml
+
 # Enable file monitoring for cleanup between foo and bar services
 appname_file_monitor_enabled: true
 appname_file_monitor_path: "/var/app/temp"
@@ -82,6 +86,8 @@ appname_email_to: "ops-team@example.com"
 appname_email_subject_prefix: "[Production Alert]"
 appname_email_secure: "starttls"
 ```
+
+**Note**: Email and file monitoring settings are typically configured globally in `all.yml` since they apply to all services. You can override these in service-specific or tier-specific group_vars files if needed.
 
 ### Email Report Format
 
