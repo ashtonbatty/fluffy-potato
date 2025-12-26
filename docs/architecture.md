@@ -99,6 +99,31 @@ db_segs_dc2
 - **Service-specific** (`<service>_servers.yml`): Service name, script path, process identifier
 - **Host-specific** (`host_vars/`): Edge cases only - avoid if possible
 
+### Practical Variable Precedence Example
+
+Here's a concrete example showing how variable precedence works:
+
+```yaml
+# inventory/group_vars/all.yml (precedence: 2 - applies to all hosts)
+appname_retry_delay: 3
+appname_script_timeout: 300
+
+# inventory/group_vars/db_segs_tier.yml (precedence: 4 - applies to all db_segs hosts)
+appname_script_timeout: 600  # Overrides all.yml - database operations need more time
+
+# inventory/group_vars/elephant_servers.yml (precedence: 6 - applies only to elephant service)
+appname_service_name: "elephant"
+appname_service_script: "/scripts/elephant.sh"
+appname_script_timeout: 900  # Overrides db_segs_tier.yml - elephant needs even more time
+```
+
+**Result**: When elephant service runs on db_segs hosts:
+- `appname_retry_delay`: **3** (from all.yml)
+- `appname_script_timeout`: **900** (from elephant_servers.yml - highest precedence)
+- `appname_service_name`: **"elephant"** (from elephant_servers.yml - only place defined)
+
+This allows you to set sensible defaults globally, apply tier-specific tuning, and override for individual services as needed.
+
 ## Adding New Services
 
 1. **Update inventory groups** (`inventory/hosts`):
