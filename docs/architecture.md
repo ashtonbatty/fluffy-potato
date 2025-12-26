@@ -201,7 +201,7 @@ Adjust these based on your service's startup/shutdown characteristics. Services 
 2. **Verify check strings** match actual script output
 3. **Set appropriate timeouts** for your service startup/shutdown times
 4. **Use specific process identifiers** (>= 5 chars) to avoid killing wrong processes
-5. **Keep group_vars files in version control** for reproducibility
-6. **Document custom configurations** in service-specific README files
+5. **Keep all group_vars files in version control** for reproducibility
+6. **Document custom configurations** in service-specific comments within group_vars files
 7. **Disable force kill in production** unless absolutely necessary (`appname_allow_force_kill: false`)
 8. **Run ansible-lint** before committing changes to catch issues early

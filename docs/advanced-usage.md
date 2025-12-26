@@ -31,10 +31,22 @@ ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=stop \
 
 ### Override Per Service
 
-Use extra-vars files for complex overrides:
+You can override service-specific settings in multiple ways:
+
+**Option 1: Edit the service's group_vars file directly** (recommended for permanent changes):
 
 ```yaml
-# custom_foo.yml
+# inventory/group_vars/foo_servers.yml
+appname_retry_delay: 10
+appname_stop_expected_rc: 1  # Non-zero expected
+appname_process_identifier: "java.*custom_pattern"
+appname_allow_force_kill: false
+```
+
+**Option 2: Use extra-vars file for temporary overrides**:
+
+```yaml
+# custom_overrides.yml
 appname_retry_delay: 10
 appname_stop_expected_rc: 1  # Non-zero expected
 appname_process_identifier: "java.*custom_pattern"
@@ -43,6 +55,14 @@ appname_allow_force_kill: false
 
 ```bash
 ansible-playbook -i inventory/hosts orchestrate.yml -e service_action=stop \
-  -e @custom_foo.yml
+  -e @custom_overrides.yml
+```
+
+**Option 3: Tier-specific overrides** (affects all services on that tier):
+
+```yaml
+# inventory/group_vars/db_segs_tier.yml
+appname_retry_delay: 10
+appname_script_timeout: 600
 ```
 

@@ -88,9 +88,11 @@ This mode provides:
 - Automatic idempotency
 - Works with any systemd-managed service
 
-**To use service module mode**, simply omit the `appname_service_script` variable in your service vars file.
+**To use service module mode**, simply omit the `appname_service_script` variable in your service group_vars file.
 
 ### Service-Specific Variables
 
-Override defaults in service var files (`vars/*.yml`).
+Override defaults in service group_vars files (`inventory/group_vars/<service>_servers.yml`).
+
+Variables are automatically loaded by Ansible based on group membership defined in `inventory/hosts`. No explicit `vars_files` directive needed in playbooks.
 

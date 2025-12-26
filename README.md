@@ -40,21 +40,19 @@ host3.example.com
 
 ### 2. Configure Services
 
-Each service has a vars file in `vars/` with `appname_` prefixed variables.
+Each service has configuration in `inventory/group_vars/<service>_servers.yml` with `appname_` prefixed variables.
 
-**For custom script-based services** (`vars/foo.yml`):
+**For custom script-based services** (`inventory/group_vars/foo_servers.yml`):
 ```yaml
 appname_service_name: "foo"
 appname_service_script: "/scripts/foo.sh"
 appname_process_identifier: "COMPONENT=foo"
-inventory_group: "foo_servers"
 ```
 
-**For systemd-managed services** (`vars/nginx.yml`):
+**For systemd-managed services** (`inventory/group_vars/nginx_servers.yml`):
 ```yaml
 appname_service_name: "nginx"
 # appname_service_script not defined - uses systemd module
-inventory_group: "webservers"
 ```
 
 ### 3. Run Operations
@@ -102,14 +100,17 @@ ansible-cal/
 ├── orchestrate.yml                    # Router playbook
 ├── rename_role.sh                     # Script to rename role for different applications
 ├── playbooks/
-│   ├── appname_start.yml                  # Start workflow
-│   ├── appname_stop.yml                   # Stop workflow
-│   └── appname_status.yml                 # Status workflow
-├── inventory/hosts                    # Inventory with service groups
-├── vars/
-│   ├── foo.yml                        # Service configurations
-│   ├── bar.yml
-│   └── elephant.yml
+│   ├── appname_start.yml              # Start workflow
+│   ├── appname_stop.yml               # Stop workflow
+│   └── appname_status.yml             # Status workflow
+├── inventory/
+│   ├── hosts                          # Inventory with infrastructure and service groups
+│   └── group_vars/                    # Group-based variable hierarchy
+│       ├── all.yml                    # Global settings (SMTP, email, privilege escalation)
+│       ├── foo_servers.yml            # Service-specific configurations
+│       ├── bar_servers.yml
+│       ├── elephant_servers.yml
+│       └── db_segs_tier.yml           # Tier-specific overrides
 ├── roles/appname/
 │   ├── defaults/main.yml              # Default variables
 │   ├── meta/main.yml                  # Role metadata
@@ -207,7 +208,7 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 When adding new services or features:
 1. Maintain the DRY principle
-2. Keep service-specific config in vars files
+2. Keep service-specific config in `inventory/group_vars/<service>_servers.yml`
 3. Use `appname_` prefix for all role variables
 4. Update documentation with new features
 5. Run `ansible-lint` to ensure code quality

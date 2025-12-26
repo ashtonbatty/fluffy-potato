@@ -8,7 +8,7 @@ Check the stop check string matches your script output:
 # Should output something containing "stopping"
 ```
 
-Adjust `appname_stop_check_string` in vars file if needed.
+Adjust `appname_stop_check_string` in `inventory/group_vars/<service>_servers.yml` if needed.
 
 ### Return code validation failing
 
@@ -23,7 +23,7 @@ Verify `appname_process_identifier` matches your running process:
 ps aux | grep "COMPONENT=foo"
 ```
 
-Adjust `appname_process_identifier` in vars file if needed.
+Adjust `appname_process_identifier` in `inventory/group_vars/<service>_servers.yml` if needed.
 
 **IMPORTANT - Test Process Kill Patterns Before Production:**
 
